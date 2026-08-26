@@ -1,0 +1,24 @@
+/**
+ * Quiet Command Center design system: porcelain-white surfaces, ink-navy hierarchy,
+ * Signal Teal action cues, and measured type for the DevSync v2 Next.js experience.
+ */
+@import "tailwindcss";
+
+:root {
+  --background: #F6F8FB;
+  --foreground: #173247;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--background); }
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display { font-family: "DM Sans", Manrope, ui-sans-serif, system-ui, sans-serif; }
