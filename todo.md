@@ -3,7 +3,7 @@
 - [x] Collect the MongoDB Atlas connection string through project secrets, not application code or browser storage.
 - [x] Collect Firebase web-app configuration and Firebase Admin service-account credentials for Google-only authentication.
 - [x] Enable Google as the only Firebase Authentication sign-in provider and register the DevSync development authorised domain.
-- [ ] Register the final production DevSync domain in Firebase Authentication authorised domains before publishing.
+- [x] Register the assigned DevSync production domain `devsyncui-jugwbhqd.manus.space` in Firebase Authentication authorised domains and verify production Google sign-in.
 - [x] Diagnose and repair the Firebase Google sign-in button so it opens an identity flow and establishes a DevSync session.
 - [x] Add the current DevSync preview hostname to Firebase Authentication authorised domains so Google sign-in can be tested end-to-end.
 - [x] Replace the blocked popup-based Firebase sign-in interaction with a reliable native Firebase popup credential exchange and server session creation.
@@ -53,6 +53,6 @@
 - [x] Add controlled browser-like component coverage for an Admin task-archive failure, confirming clear error feedback without changing data.
 - [x] Add focused automated coverage that a failed employee activity change is surfaced as clear Admin UI feedback without applying an activity change.
 - [x] Diagnose and correct the managed deployment packaging failure caused by the absent `dist/public` artifact after a successful Next.js build.
-- [ ] Publish the corrected full-stack configuration and verify managed hosting uses the Next.js server artifact rather than the retired Vite `dist/public` upload path.
+- [x] Publish the corrected full-stack configuration and verify managed hosting uses the Next.js server artifact rather than the retired Vite `dist/public` upload path.
 - [x] Add a complete explicit Next.js Docker runtime contract because managed deployment continues to select the legacy static uploader despite corrected project metadata.
 - [x] Ensure the explicit Next.js image provides a harmless non-empty `dist/public` compatibility directory if the managed builder still appends its legacy static upload stage.
