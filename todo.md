@@ -54,3 +54,4 @@
 - [x] Add focused automated coverage that a failed employee activity change is surfaced as clear Admin UI feedback without applying an activity change.
 - [x] Diagnose and correct the managed deployment packaging failure caused by the absent `dist/public` artifact after a successful Next.js build.
 - [ ] Publish the corrected full-stack configuration and verify managed hosting uses the Next.js server artifact rather than the retired Vite `dist/public` upload path.
+- [x] Add a complete explicit Next.js Docker runtime contract because managed deployment continues to select the legacy static uploader despite corrected project metadata.

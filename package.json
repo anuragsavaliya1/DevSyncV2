@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
     "build": "NODE_ENV=production next build",
-    "start": "NODE_ENV=production next start -H 0.0.0.0",
+    "start": "NODE_ENV=production next start -H 0.0.0.0 -p ${PORT:-3000}",
     "check": "tsc --noEmit",
     "test": "vitest run",
     "format": "prettier --write ."
