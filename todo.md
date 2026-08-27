@@ -4,7 +4,20 @@
 - [x] Collect Firebase web-app configuration and Firebase Admin service-account credentials for Google-only authentication.
 - [x] Enable Google as the only Firebase Authentication sign-in provider and register the DevSync development authorised domain.
 - [ ] Register the final production DevSync domain in Firebase Authentication authorised domains before publishing.
-- [x] Add the initial Admin email to the server-side allow-list; new accounts otherwise begin as Developer and may be promoted by an Admin.
+- [x] Diagnose and repair the Firebase Google sign-in button so it opens an identity flow and establishes a DevSync session.
+- [x] Add the current DevSync preview hostname to Firebase Authentication authorised domains so Google sign-in can be tested end-to-end.
+- [x] Replace the blocked popup-based Firebase sign-in interaction with a reliable native Firebase popup credential exchange and server session creation.
+- [x] Make Firebase sign-in explicitly user-triggered and display a recoverable error instead of an indefinite loading screen.
+- [x] Replace the opaque Firebase browser-SDK launch with a browser-native identity route that surfaces actionable errors.
+- [x] Diagnose and repair the post-Google callback and DevSync session-exchange error after account selection.
+- [x] Diagnose and repair the authenticated dashboard operational-data loading state after Google sign-in.
+- [x] Diagnose and repair non-responsive React controls in the authenticated DevSync workspace after Google sign-in.
+- [x] Diagnose and repair the Admin role-directory query so the authenticated initial Admin appears in Role Management.
+- [x] Eliminate server/client locale-date formatting mismatches that trigger React hydration recovery in the authenticated workspace.
+- [x] Implement and verify a visible recoverable Firebase sign-in error state with a retry action and surfaced error code.
+- [x] Exercise a controlled failed sign-in path to verify the Firebase error state appears instead of an indefinite loader.
+- [x] Add the initial Admin email to the server-side allow-list; all other verified Google accounts begin as Developer and may be promoted by an Admin.
+- [x] Approve open verified-Google sign-up for DevSync, with default Developer access for all non-Admin users.
 - [x] Create a clean latest-Next.js application using the existing Vite UI only as the approved visual reference.
 - [x] Create a clean MongoDB database and configure its credentials only as server-side secrets.
 - [x] Implement Firebase ID-token verification in protected Next.js route handlers for authenticated application procedures and future mobile clients.
@@ -13,4 +26,15 @@
 - [x] Replace all demo arrays with authenticated API reads and writes against the new MongoDB database.
 - [x] Implement live operational updates, validation rules, attendance device metadata, and notification read states.
 - [ ] Defer Firestore export and migration work until the clean DevSync v2 workflows are approved in production.
-- [ ] Test access boundaries, destructive actions, real-time flows, mobile behavior, and operational error states.
+- [ ] Complete end-to-end validation of live polling, authenticated mobile behavior, and safe Admin mutation flows.
+- [x] Verify an actual authenticated background polling cycle from an already-populated team or attendance view without blocking the workspace.
+- [x] Add a lightweight last-refreshed indicator so DevSync polling cycles can be observed during QA without changing operational data.
+- [ ] Validate the authenticated mobile dashboard’s navigation, forms, drawer, and tab controls.
+- [ ] Test a safe authenticated Admin mutation with UI success and error feedback without altering critical operational data.
+- [x] Ensure destructive task routes authenticate before validating task identifiers or request payloads, returning 401/403 for unauthenticated calls.
+- [x] Align the health endpoint’s identity-provider status with Firebase Authentication instead of the retired Google OAuth configuration.
+- [x] Audit all JSON route handlers to return explicit 401/403 responses instead of login redirects for unauthenticated or unauthorized API requests.
+- [x] Verify task-detail and task-remark route handlers use explicit JSON session guards and return 401 before payload or identifier validation when unauthenticated.
+- [x] Complete the remaining read-only v1 parity sweep for notifications, grid view, and completed-task/remark/delete-task presentation.
+- [ ] If v1 source access is provided, produce a technical inventory of v1-only functions, integrations, and dependencies; otherwise retain only the verified no-v1-changes statement.
+- [x] Prioritize confirmed v2 capability gaps after the live v1 comparison before implementing any parity work.

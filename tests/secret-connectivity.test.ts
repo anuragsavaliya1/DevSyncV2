@@ -24,6 +24,14 @@ describe("configured DevSync external credentials", () => {
     expect(result.ok).toBe(1);
   }, 20_000);
 
+  it("persists the Firebase-authenticated initial Admin with the Admin role", async () => {
+    const database = mongoClient!.db(process.env.MONGODB_DB_NAME || "devsync_v2");
+    const user = await database.collection("users").findOne({ email: "anurag.xitijinfo@gmail.com" }, { projection: { email: 1, role: 1, firebaseUid: 1, isActive: 1 } });
+    expect(user).toBeTruthy();
+    expect(user).toMatchObject({ email: "anurag.xitijinfo@gmail.com", role: "admin", isActive: true });
+    expect(typeof user?.firebaseUid).toBe("string");
+  }, 20_000);
+
   it("authenticates to Firebase Admin without exposing credential data", async () => {
     expect(serviceAccountJson).toBeTruthy();
     const serviceAccount = parseFirebaseServiceAccount(serviceAccountJson!);

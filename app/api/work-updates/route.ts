@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { canViewTeamData, indiaDateKey, listWorkUpdates, saveWorkUpdate } from "@/lib/operations";
-import { requireCurrentUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -13,8 +13,9 @@ const updateSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   try {
-    const user = await requireCurrentUser();
     const search = request.nextUrl.searchParams;
     const requestedUserId = search.get("userId") || user.id;
     if (requestedUserId !== user.id && !canViewTeamData(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -26,8 +27,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   try {
-    const user = await requireCurrentUser();
     const input = updateSchema.parse(await request.json());
     const update = await saveWorkUpdate(user, input);
     return NextResponse.json({ update });

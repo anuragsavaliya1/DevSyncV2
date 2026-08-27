@@ -4,6 +4,7 @@ import type { DecodedIdToken } from "firebase-admin/auth";
 import { ObjectId } from "mongodb";
 import { getMongoDatabase } from "@/lib/mongodb";
 import { type Role, isRole } from "@/lib/roles";
+import { initialRoleForVerifiedEmail } from "@/lib/provisioning";
 
 export type DevSyncUser = {
   id: string;
@@ -65,7 +66,7 @@ export async function upsertFirebaseUser(identity: DecodedIdToken): Promise<DevS
   const users = database.collection<DevSyncUserDocument>("users");
   const now = new Date();
   const email = identity.email.toLowerCase();
-  const isInitialAdmin = email === getInitialAdminEmail();
+  const isInitialAdmin = initialRoleForVerifiedEmail(email, getInitialAdminEmail()) === "admin";
 
   const update = await users.updateOne(
     { firebaseUid: identity.uid },

@@ -2,15 +2,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { assignTask, canViewTeamData, listAssignedTasks } from "@/lib/operations";
-import { requireCurrentUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 
 export const runtime = "nodejs";
 
 const assignmentSchema = z.object({ developerUserId: z.string().min(1), description: z.string().min(3).max(2000) });
 
 export async function GET(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   try {
-    const user = await requireCurrentUser();
     const requestedUserId = request.nextUrl.searchParams.get("developerUserId") || user.id;
     if (requestedUserId !== user.id && !canViewTeamData(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const status = request.nextUrl.searchParams.get("status");
@@ -22,8 +23,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   try {
-    const user = await requireCurrentUser();
     const input = assignmentSchema.parse(await request.json());
     return NextResponse.json({ task: await assignTask(user, input) });
   } catch (error) {

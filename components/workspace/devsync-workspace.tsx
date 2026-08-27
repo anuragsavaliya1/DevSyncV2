@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bell, CalendarCheck2, Check, CheckCircle2, ChevronRight, ClipboardList, Clock3, Crown, LayoutGrid, LoaderCircle, Plus, Send, ShieldCheck, UsersRound, X } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { getRefreshStatus } from "@/lib/refresh-status";
 
 type Role = "developer" | "manager" | "admin";
 type User = { id: string; email: string; displayName: string | null; photoUrl: string | null; role: Role; isActive: boolean; createdAt: string; lastSignedInAt: string };
@@ -25,8 +26,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 function duration(minutes: number) { return minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60 ? `${minutes % 60}m` : ""}`.trim() : `${minutes}m`; }
-function formatTime(value?: string) { return value ? new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"; }
-function formatDate(value: string) { return new Date(`${value}T12:00:00`).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" }); }
+const displayDateFormat = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+const displayTimeFormat = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
+function formatTime(value?: string) { return value ? displayTimeFormat.format(new Date(value)) : "—"; }
+function formatDate(value: string) { return displayDateFormat.format(new Date(`${value}T12:00:00Z`)); }
 function initials(name: string | null, email: string) { return (name || email).split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase(); }
 
 export function DevSyncWorkspace({ user, businessDate }: { user: User; businessDate: string }) {
@@ -36,22 +39,26 @@ export function DevSyncWorkspace({ user, businessDate }: { user: User; businessD
   const [tasks, setTasks] = useState<AssignedTask[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([user]);
   const [isBusy, setIsBusy] = useState(false);
   const [draftTasks, setDraftTasks] = useState([{ id: "first-task", description: "", minutes: "0" }]);
   const [blockers, setBlockers] = useState("");
   const [workDate, setWorkDate] = useState(businessDate);
   const [remarkText, setRemarkText] = useState<Record<string, string>>({});
+  const [clientReady, setClientReady] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(true);
 
   const canViewTeam = user.role === "admin" || user.role === "manager";
   const unreadCount = notifications.filter((notification) => !notification.isRead).length;
   const firstName = user.displayName?.split(" ")[0] || user.email.split("@")[0];
 
   const reloadCore = useCallback(async () => {
-    setIsLoading(true); setError(null);
+    setError(null);
+    setIsRefreshing(true);
     try {
       const [attendanceResult, updateResult, taskResult, notificationResult] = await Promise.all([
         request<{ attendance: Attendance | null }>(`/api/attendance?workDate=${businessDate}`),
@@ -59,9 +66,9 @@ export function DevSyncWorkspace({ user, businessDate }: { user: User; businessD
         request<{ tasks: AssignedTask[] }>("/api/tasks"),
         request<{ notifications: Notification[] }>("/api/notifications"),
       ]);
-      setAttendance(attendanceResult.attendance); setUpdates(updateResult.updates); setTasks(taskResult.tasks); setNotifications(notificationResult.notifications);
+      setAttendance(attendanceResult.attendance); setUpdates(updateResult.updates); setTasks(taskResult.tasks); setNotifications(notificationResult.notifications); setLastRefreshedAt(new Date().toISOString());
     } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "Unable to load workspace data."); }
-    finally { setIsLoading(false); }
+    finally { setIsLoading(false); setIsRefreshing(false); }
   }, [businessDate]);
 
   const loadTeam = useCallback(async () => {
@@ -79,6 +86,7 @@ export function DevSyncWorkspace({ user, businessDate }: { user: User; businessD
   }, [user.role]);
 
   useEffect(() => { void reloadCore(); }, [reloadCore]);
+  useEffect(() => { setClientReady(true); }, []);
   useEffect(() => { if (activeTab === "team-updates") void loadTeam(); }, [activeTab, loadTeam]);
   useEffect(() => { if (activeTab === "roles") void loadUsers(); }, [activeTab, loadUsers]);
   useEffect(() => { const timer = window.setInterval(() => { void reloadCore(); if (activeTab === "team-updates") void loadTeam(); if (activeTab === "roles") void loadUsers(); }, 15_000); return () => window.clearInterval(timer); }, [activeTab, loadTeam, loadUsers, reloadCore]);
@@ -114,8 +122,9 @@ export function DevSyncWorkspace({ user, businessDate }: { user: User; businessD
   return (
     <main className="min-h-screen bg-[#F6F8FB] text-[#173247]">
       <header className="sticky top-0 z-30 border-b border-[#E3EBEF] bg-white/95 backdrop-blur"><div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-7"><div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#173247] text-xs font-black text-[#69D4C4]">D</span><div><p className="font-display text-lg font-extrabold tracking-[-0.055em]">devsync</p><p className="-mt-0.5 text-[8px] font-extrabold uppercase tracking-[0.15em] text-[#7890A0]">daily operating system</p></div></div><div className="flex items-center gap-1 sm:gap-3"><button type="button" aria-label="Open notifications" onClick={() => setIsDrawerOpen((open) => !open)} className="relative flex h-9 w-9 items-center justify-center rounded-lg text-[#6A8191] transition hover:bg-[#EEF5F5] hover:text-[#0E9384]"><Bell className="h-4 w-4" />{unreadCount > 0 && <span className="absolute right-1 top-1 min-w-4 rounded-full bg-[#0E9384] px-1 text-[9px] font-black leading-4 text-white">{unreadCount}</span>}</button><div className="hidden items-center gap-2 border-l border-[#E7EEF1] pl-3 sm:flex"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EAF7F4] text-[10px] font-extrabold text-[#087A6D]">{initials(user.displayName, user.email)}</span><span className="max-w-28 truncate text-xs font-extrabold">{user.displayName || user.email}</span></div><LogoutButton /></div></div></header>
-      <div className="mx-auto grid max-w-[1440px] lg:grid-cols-[220px_1fr]"><aside className="border-b border-[#E3EBEF] bg-white p-3 lg:min-h-[calc(100vh-4rem)] lg:border-b-0 lg:border-r lg:p-5"><nav className="flex gap-1 overflow-x-auto lg:flex-col">{tabs.filter((tab) => tab.visible).map(({ id, label, icon: Icon }) => <button key={id} type="button" onClick={() => setActiveTab(id)} className={`flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-extrabold transition ${activeTab === id ? "bg-[#EAF7F4] text-[#087A6D]" : "text-[#688091] hover:bg-[#F3F7F8] hover:text-[#173247]"}`}><Icon className="h-4 w-4" />{label}</button>)}</nav><div className="mt-5 hidden rounded-xl border border-[#DDEBE8] bg-[#F5FBF9] p-3 lg:block"><p className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-[#0E9384]">Active account</p><p className="mt-2 truncate text-xs font-extrabold">{user.email}</p><span className="mt-2 inline-flex rounded-full bg-white px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.1em] text-[#0E9384]">{user.role}</span></div></aside>
+      <div className="mx-auto grid max-w-[1440px] lg:grid-cols-[220px_1fr]"><aside className="border-b border-[#E3EBEF] bg-white p-3 lg:min-h-[calc(100vh-4rem)] lg:border-b-0 lg:border-r lg:p-5"><nav className="flex gap-1 overflow-x-auto lg:flex-col">{tabs.filter((tab) => tab.visible).map(({ id, label, icon: Icon }) => <button key={id} type="button" onClick={() => setActiveTab(id)} className={`flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-extrabold transition ${activeTab === id ? "bg-[#EAF7F4] text-[#087A6D]" : "text-[#688091] hover:bg-[#F3F7F8] hover:text-[#173247]"}`}><Icon className="h-4 w-4" />{label}</button>)}</nav><div className="mt-5 hidden rounded-xl border border-[#DDEBE8] bg-[#F5FBF9] p-3 lg:block"><p className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-[#0E9384]">Active account</p><p className="mt-2 truncate text-xs font-extrabold">{user.email}</p><span className="mt-2 inline-flex rounded-full bg-white px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.1em] text-[#0E9384]">{user.role}</span><p className="mt-2 text-[9px] font-bold text-[#7890A0]">Workspace {clientReady ? "live" : "connecting"}</p></div></aside>
         <section className="min-w-0 p-4 sm:p-7"><div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#0E9384]">{formatDate(businessDate)}</p><h1 className="mt-1 font-display text-3xl font-extrabold tracking-[-0.06em] sm:text-4xl">{activeTab === "my-updates" ? `Good day, ${firstName}.` : activeTab === "team-updates" ? "Daily team status" : activeTab === "attendance" ? "Attendance ledger" : "Manage team roles"}</h1></div>{activeTab !== "roles" && <AttendancePill attendance={attendance} isBusy={isBusy} onPunch={punch} />}</div>
+          <p aria-live="polite" className="-mt-3 mb-5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7890A0]">{getRefreshStatus(lastRefreshedAt, isRefreshing)}</p>
           {error && <div role="alert" className="mb-5 flex items-start gap-3 rounded-xl border border-[#F4C9C4] bg-[#FFF5F4] px-4 py-3 text-xs font-semibold text-[#A64D43]"><X className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
           {isLoading ? <LoadingState /> : activeTab === "my-updates" ? <MyUpdatesV2 attendance={attendance} businessDate={businessDate} workDate={workDate} setWorkDate={setWorkDate} update={selectedUpdate} updates={updates} tasks={tasks} draftTasks={draftTasks} blockers={blockers} remarkText={remarkText} isBusy={isBusy} onDraftTasks={setDraftTasks} onBlockers={setBlockers} onRemarkText={setRemarkText} onSubmit={submitUpdate} onComplete={completeAssignedTask} onAddRemark={addRemark} /> : activeTab === "team-updates" ? <TeamUpdatesV2 workDate={workDate} setWorkDate={setWorkDate} members={teamMembers} /> : activeTab === "attendance" ? <AttendanceModule attendance={attendance} businessDate={businessDate} canViewTeam={canViewTeam} /> : <RoleManagement users={allUsers} selfId={user.id} isBusy={isBusy} onChangeRole={changeRole} />}
         </section>
@@ -162,8 +171,8 @@ function TeamUpdatesV2({ workDate, setWorkDate, members }: { workDate: string; s
 }
 
 function AttendanceModule({ attendance, businessDate, canViewTeam }: { attendance: Attendance | null; businessDate: string; canViewTeam: boolean }) {
-  const [workDate, setWorkDate] = useState(businessDate); const [rows, setRows] = useState<{ user: User; attendance: Attendance | null }[]>([]); const [loading, setLoading] = useState(false); const [error, setError] = useState<string | null>(null);
-  const load = useCallback(async () => { if (!canViewTeam) return; setLoading(true); try { setRows((await request<{ rows: { user: User; attendance: Attendance | null }[] }>(`/api/team-attendance?workDate=${workDate}`)).rows); setError(null); } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "Unable to load team attendance."); } finally { setLoading(false); } }, [canViewTeam, workDate]);
+  const [workDate, setWorkDate] = useState(businessDate); const [rows, setRows] = useState<{ user: User; attendance: Attendance | null }[]>([]); const [loading, setLoading] = useState(false); const [hasLoaded, setHasLoaded] = useState(false); const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => { if (!canViewTeam) return; if (!hasLoaded) setLoading(true); try { setRows((await request<{ rows: { user: User; attendance: Attendance | null }[] }>(`/api/team-attendance?workDate=${workDate}`)).rows); setError(null); } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "Unable to load team attendance."); } finally { setLoading(false); setHasLoaded(true); } }, [canViewTeam, hasLoaded, workDate]);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (!canViewTeam) return; const timer = window.setInterval(() => { void load(); }, 15_000); return () => window.clearInterval(timer); }, [canViewTeam, load]);
   if (!canViewTeam) return <AttendanceView attendance={attendance} />;

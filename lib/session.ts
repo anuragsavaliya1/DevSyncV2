@@ -8,10 +8,9 @@ import { getUserByFirebaseUid, type DevSyncUser } from "@/lib/users";
 export const DEV_SYNC_SESSION_COOKIE = "devsync_session";
 
 export async function getCurrentUser(): Promise<DevSyncUser | null> {
-  const sessionCookie = (await cookies()).get(DEV_SYNC_SESSION_COOKIE)?.value;
-  if (!sessionCookie) return null;
-
   try {
+    const sessionCookie = (await cookies()).get(DEV_SYNC_SESSION_COOKIE)?.value;
+    if (!sessionCookie) return null;
     const decoded = await verifyFirebaseSession(sessionCookie);
     const user = await getUserByFirebaseUid(decoded.uid);
     return user?.isActive ? user : null;

@@ -2,14 +2,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { addTaskRemark } from "@/lib/operations";
-import { requireCurrentUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 
 export const runtime = "nodejs";
 const remarkSchema = z.object({ text: z.string().min(1).max(2000) });
 
 export async function POST(request: NextRequest, context: { params: Promise<{ taskId: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   try {
-    const user = await requireCurrentUser();
     const { taskId } = await context.params;
     const { text } = remarkSchema.parse(await request.json());
     return NextResponse.json({ remark: await addTaskRemark(user, taskId, text) });
