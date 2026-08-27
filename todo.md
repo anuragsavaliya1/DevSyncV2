@@ -25,7 +25,7 @@
 - [x] Specify server-authorized permissions for Developer, Manager, and Admin actions.
 - [x] Replace all demo arrays with authenticated API reads and writes against the new MongoDB database.
 - [x] Implement live operational updates, validation rules, attendance device metadata, and notification read states.
-- [ ] Defer Firestore export and migration work until the clean DevSync v2 workflows are approved in production.
+- [x] Defer Firestore export and migration work until the clean DevSync v2 workflows are approved in production.
 - [x] Validate live polling, user-confirmed authenticated mobile behavior, and a live safe Admin mutation success with automated client failure-state coverage.
 - [x] Verify an actual authenticated background polling cycle from an already-populated team or attendance view without blocking the workspace.
 - [x] Add a lightweight last-refreshed indicator so DevSync polling cycles can be observed during QA without changing operational data.
@@ -36,7 +36,7 @@
 - [x] Audit all JSON route handlers to return explicit 401/403 responses instead of login redirects for unauthenticated or unauthorized API requests.
 - [x] Verify task-detail and task-remark route handlers use explicit JSON session guards and return 401 before payload or identifier validation when unauthenticated.
 - [x] Complete the remaining read-only v1 parity sweep for notifications, grid view, and completed-task/remark/delete-task presentation.
-- [ ] If v1 source access is provided, produce a technical inventory of v1-only functions, integrations, and dependencies; otherwise retain only the verified no-v1-changes statement.
+- [x] Retain the verified no-v1-changes statement because source-level v1 access was not provided; perform a technical inventory only in a separately approved source-review task.
 - [x] Prioritize confirmed v2 capability gaps after the live v1 comparison before implementing any parity work.
 - [x] Define safe activation/deactivation rules that preserve historical MongoDB records and protect the initial Admin.
 - [x] Add Manager/Admin employee-detail APIs for selected-employee task and work-history review with bounded server-side filtering.
@@ -52,3 +52,5 @@
 - [x] Browser-verify selected-employee history filters against existing real data without creating or changing records.
 - [x] Add controlled browser-like component coverage for an Admin task-archive failure, confirming clear error feedback without changing data.
 - [x] Add focused automated coverage that a failed employee activity change is surfaced as clear Admin UI feedback without applying an activity change.
+- [x] Diagnose and correct the managed deployment packaging failure caused by the absent `dist/public` artifact after a successful Next.js build.
+- [ ] Publish the corrected full-stack configuration and verify managed hosting uses the Next.js server artifact rather than the retired Vite `dist/public` upload path.
