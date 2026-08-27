@@ -55,3 +55,4 @@
 - [x] Diagnose and correct the managed deployment packaging failure caused by the absent `dist/public` artifact after a successful Next.js build.
 - [ ] Publish the corrected full-stack configuration and verify managed hosting uses the Next.js server artifact rather than the retired Vite `dist/public` upload path.
 - [x] Add a complete explicit Next.js Docker runtime contract because managed deployment continues to select the legacy static uploader despite corrected project metadata.
+- [x] Ensure the explicit Next.js image provides a harmless non-empty `dist/public` compatibility directory if the managed builder still appends its legacy static upload stage.

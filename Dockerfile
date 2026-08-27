@@ -8,7 +8,9 @@ COPY . .
 
 RUN npm install -g corepack@latest \
   && corepack pnpm install --frozen-lockfile \
-  && corepack pnpm run build
+  && corepack pnpm run build \
+  && mkdir -p dist/public \
+  && printf '%s\n' 'DevSync is served by the Next.js application container.' > dist/public/index.html
 
 ENV NODE_ENV=production
 
