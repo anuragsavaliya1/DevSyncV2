@@ -82,6 +82,10 @@ The task-archive route was tightened to reject non-Admin users with an explicit 
 
 At a 375×812 viewport, both the public DevSync login and native Google sign-in pages render cleanly with readable copy and an accessible primary action. The capture redirects the unauthenticated dashboard to login as designed. The authenticated mobile workspace still requires one session-level check on a real phone or narrow desktop browser before production release.
 
+Controlled browser-like regression coverage now verifies both non-mutating client failure paths: a rejected Admin task archive displays the server message and retains the task in the canvas, while a rejected employee activity change displays a visually distinct red status and retains the employee’s active state. The full validation suite passed with **11 test files and 21 tests**, including live MongoDB/Firebase credential checks, followed by a successful production build.
+
+The user then completed the authenticated mobile walk-through using a real account and reported no issue across the requested navigation, work-update, team-status, employee-history, notification, role, and attendance surfaces.
+
 ## Recommended v2 implementation order
 
 | Order | Deliverable | Why this order |

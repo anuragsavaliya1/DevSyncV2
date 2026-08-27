@@ -26,9 +26,12 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.14",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^24.7.0",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
+    "jsdom": "^30.0.1",
     "postcss": "^8.4.20",
     "prettier": "^3.6.2",
     "tailwindcss": "^4.1.14",

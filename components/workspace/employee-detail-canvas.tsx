@@ -68,7 +68,7 @@ export function EmployeeDetailCanvas({ employeeId, viewerRole, onBack, onChanged
   return <div className="space-y-5">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-xl border border-[#DDE7EB] bg-white px-3 py-2 text-xs font-extrabold text-[#526B7B] transition hover:border-[#AFCAC4] hover:text-[#087A6D]"><ArrowLeft className="h-4 w-4" />Back to team status</button>
-      {employee && <div className={`inline-flex rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.12em] ${employee.isActive ? "bg-[#EAF7F4] text-[#087A6D]" : "bg-[#FFF1EF] text-[#A64D43]`"}`}>{employee.isActive ? "Active employee" : "Inactive employee"}</div>}
+      {employee && <div className={`inline-flex rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.12em] ${employee.isActive ? "bg-[#EAF7F4] text-[#087A6D]" : "bg-[#FFF1EF] text-[#A64D43]"}`}>{employee.isActive ? "Active employee" : "Inactive employee"}</div>}
     </div>
 
     {error && <div role="alert" className="flex items-start gap-3 rounded-xl border border-[#F4C9C4] bg-[#FFF5F4] px-4 py-3 text-xs font-semibold text-[#A64D43]"><X className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}

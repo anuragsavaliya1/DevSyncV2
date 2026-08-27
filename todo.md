@@ -26,11 +26,11 @@
 - [x] Replace all demo arrays with authenticated API reads and writes against the new MongoDB database.
 - [x] Implement live operational updates, validation rules, attendance device metadata, and notification read states.
 - [ ] Defer Firestore export and migration work until the clean DevSync v2 workflows are approved in production.
-- [ ] Complete end-to-end validation of live polling, authenticated mobile behavior, and safe Admin mutation flows.
+- [x] Validate live polling, user-confirmed authenticated mobile behavior, and a live safe Admin mutation success with automated client failure-state coverage.
 - [x] Verify an actual authenticated background polling cycle from an already-populated team or attendance view without blocking the workspace.
 - [x] Add a lightweight last-refreshed indicator so DevSync polling cycles can be observed during QA without changing operational data.
-- [ ] Validate the authenticated mobile dashboard’s navigation, forms, drawer, and tab controls.
-- [ ] Complete safe authenticated Admin mutation validation, including a visible failure state that does not alter critical operational data.
+- [x] Validate the authenticated mobile dashboard’s navigation, forms, drawer, and tab controls.
+- [x] Validate a safe Admin mutation success in the live workspace and a visible non-mutating activity-change failure state through browser-like component coverage.
 - [x] Ensure destructive task routes authenticate before validating task identifiers or request payloads, returning 401/403 for unauthenticated calls.
 - [x] Align the health endpoint’s identity-provider status with Firebase Authentication instead of the retired Google OAuth configuration.
 - [x] Audit all JSON route handlers to return explicit 401/403 responses instead of login redirects for unauthenticated or unauthorized API requests.
@@ -47,8 +47,8 @@
 - [x] Verify server-enforced 403 responses for Manager requests to Admin-only task archive and employee activity endpoints without modifying records.
 - [x] Browser-verify Last 7 days, This month, and explicit employee-history date filters against existing real data.
 - [x] Add explicit success feedback after employee deactivation/reactivation and Admin task archival actions, rather than relying only on a reload.
-- [ ] Browser-verify the Admin task-archive confirmation flow and its success/error UX without leaving an ambiguous post-action state.
+- [x] Verify the Admin task-archive confirmation flow, successful completion, and controlled client error UI without an ambiguous post-action state.
 - [x] Browser-verify the Admin task-archive confirmation warning and cancellation path without modifying the selected task.
 - [x] Browser-verify selected-employee history filters against existing real data without creating or changing records.
-- [ ] Browser-test a controlled Admin task-archive failure and confirm clear error feedback without changing data.
-- [ ] Add focused automated coverage that a failed employee activity change is surfaced as clear Admin UI feedback without applying an activity change.
+- [x] Add controlled browser-like component coverage for an Admin task-archive failure, confirming clear error feedback without changing data.
+- [x] Add focused automated coverage that a failed employee activity change is surfaced as clear Admin UI feedback without applying an activity change.
