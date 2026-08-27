@@ -7,6 +7,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bell, CalendarCheck2, Check, CheckCircle2, ChevronRight, ClipboardList, Clock3, Crown, LayoutGrid, LoaderCircle, Plus, Send, ShieldCheck, UsersRound, X } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { EmployeeDetailCanvas } from "@/components/workspace/employee-detail-canvas";
+import { AccessControlPanel, TeamStatusCanvas } from "@/components/workspace/team-management";
 import { getRefreshStatus } from "@/lib/refresh-status";
 
 type Role = "developer" | "manager" | "admin";
@@ -32,7 +34,7 @@ function formatTime(value?: string) { return value ? displayTimeFormat.format(ne
 function formatDate(value: string) { return displayDateFormat.format(new Date(`${value}T12:00:00Z`)); }
 function initials(name: string | null, email: string) { return (name || email).split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase(); }
 
-export function DevSyncWorkspace({ user, businessDate }: { user: User; businessDate: string }) {
+export function DevSyncWorkspace({ user, businessDate, initialAdminEmail }: { user: User; businessDate: string; initialAdminEmail: string }) {
   const [activeTab, setActiveTab] = useState<Tab>("my-updates");
   const [attendance, setAttendance] = useState<Attendance | null>(null);
   const [updates, setUpdates] = useState<WorkUpdate[]>([]);
@@ -51,6 +53,7 @@ export function DevSyncWorkspace({ user, businessDate }: { user: User; businessD
   const [clientReady, setClientReady] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(true);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
 
   const canViewTeam = user.role === "admin" || user.role === "manager";
   const unreadCount = notifications.filter((notification) => !notification.isRead).length;
@@ -110,6 +113,10 @@ export function DevSyncWorkspace({ user, businessDate }: { user: User; businessD
   }
   function addRemark(taskId: string) { return perform(async () => { await request(`/api/tasks/${taskId}/remarks`, { method: "POST", body: JSON.stringify({ text: remarkText[taskId] || "" }) }); setRemarkText((current) => ({ ...current, [taskId]: "" })); }); }
   function changeRole(targetUserId: string, role: Role) { return perform(async () => { await request(`/api/admin/users/${targetUserId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }); }); }
+  async function changeActivity(targetUserId: string, isActive: boolean) {
+    await request(`/api/admin/users/${targetUserId}/activity`, { method: "PATCH", body: JSON.stringify({ isActive }) });
+    await Promise.all([reloadCore(), loadTeam(), loadUsers()]);
+  }
   function markRead(notificationId?: string) { return perform(async () => { await request("/api/notifications", { method: "PATCH", body: JSON.stringify(notificationId ? { notificationId } : {}) }); }); }
 
   const tabs: { id: Tab; label: string; icon: typeof ClipboardList; visible: boolean }[] = [
@@ -123,10 +130,10 @@ export function DevSyncWorkspace({ user, businessDate }: { user: User; businessD
     <main className="min-h-screen bg-[#F6F8FB] text-[#173247]">
       <header className="sticky top-0 z-30 border-b border-[#E3EBEF] bg-white/95 backdrop-blur"><div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-7"><div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#173247] text-xs font-black text-[#69D4C4]">D</span><div><p className="font-display text-lg font-extrabold tracking-[-0.055em]">devsync</p><p className="-mt-0.5 text-[8px] font-extrabold uppercase tracking-[0.15em] text-[#7890A0]">daily operating system</p></div></div><div className="flex items-center gap-1 sm:gap-3"><button type="button" aria-label="Open notifications" onClick={() => setIsDrawerOpen((open) => !open)} className="relative flex h-9 w-9 items-center justify-center rounded-lg text-[#6A8191] transition hover:bg-[#EEF5F5] hover:text-[#0E9384]"><Bell className="h-4 w-4" />{unreadCount > 0 && <span className="absolute right-1 top-1 min-w-4 rounded-full bg-[#0E9384] px-1 text-[9px] font-black leading-4 text-white">{unreadCount}</span>}</button><div className="hidden items-center gap-2 border-l border-[#E7EEF1] pl-3 sm:flex"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EAF7F4] text-[10px] font-extrabold text-[#087A6D]">{initials(user.displayName, user.email)}</span><span className="max-w-28 truncate text-xs font-extrabold">{user.displayName || user.email}</span></div><LogoutButton /></div></div></header>
       <div className="mx-auto grid max-w-[1440px] lg:grid-cols-[220px_1fr]"><aside className="border-b border-[#E3EBEF] bg-white p-3 lg:min-h-[calc(100vh-4rem)] lg:border-b-0 lg:border-r lg:p-5"><nav className="flex gap-1 overflow-x-auto lg:flex-col">{tabs.filter((tab) => tab.visible).map(({ id, label, icon: Icon }) => <button key={id} type="button" onClick={() => setActiveTab(id)} className={`flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-extrabold transition ${activeTab === id ? "bg-[#EAF7F4] text-[#087A6D]" : "text-[#688091] hover:bg-[#F3F7F8] hover:text-[#173247]"}`}><Icon className="h-4 w-4" />{label}</button>)}</nav><div className="mt-5 hidden rounded-xl border border-[#DDEBE8] bg-[#F5FBF9] p-3 lg:block"><p className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-[#0E9384]">Active account</p><p className="mt-2 truncate text-xs font-extrabold">{user.email}</p><span className="mt-2 inline-flex rounded-full bg-white px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.1em] text-[#0E9384]">{user.role}</span><p className="mt-2 text-[9px] font-bold text-[#7890A0]">Workspace {clientReady ? "live" : "connecting"}</p></div></aside>
-        <section className="min-w-0 p-4 sm:p-7"><div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#0E9384]">{formatDate(businessDate)}</p><h1 className="mt-1 font-display text-3xl font-extrabold tracking-[-0.06em] sm:text-4xl">{activeTab === "my-updates" ? `Good day, ${firstName}.` : activeTab === "team-updates" ? "Daily team status" : activeTab === "attendance" ? "Attendance ledger" : "Manage team roles"}</h1></div>{activeTab !== "roles" && <AttendancePill attendance={attendance} isBusy={isBusy} onPunch={punch} />}</div>
+        <section className="min-w-0 p-4 sm:p-7"><div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#0E9384]">{formatDate(businessDate)}</p><h1 className="mt-1 font-display text-3xl font-extrabold tracking-[-0.06em] sm:text-4xl">{selectedEmployeeId ? "Employee operations" : activeTab === "my-updates" ? `Good day, ${firstName}.` : activeTab === "team-updates" ? "Daily team status" : activeTab === "attendance" ? "Attendance ledger" : "Manage team roles"}</h1></div>{!selectedEmployeeId && activeTab !== "roles" && <AttendancePill attendance={attendance} isBusy={isBusy} onPunch={punch} />}</div>
           <p aria-live="polite" className="-mt-3 mb-5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7890A0]">{getRefreshStatus(lastRefreshedAt, isRefreshing)}</p>
           {error && <div role="alert" className="mb-5 flex items-start gap-3 rounded-xl border border-[#F4C9C4] bg-[#FFF5F4] px-4 py-3 text-xs font-semibold text-[#A64D43]"><X className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
-          {isLoading ? <LoadingState /> : activeTab === "my-updates" ? <MyUpdatesV2 attendance={attendance} businessDate={businessDate} workDate={workDate} setWorkDate={setWorkDate} update={selectedUpdate} updates={updates} tasks={tasks} draftTasks={draftTasks} blockers={blockers} remarkText={remarkText} isBusy={isBusy} onDraftTasks={setDraftTasks} onBlockers={setBlockers} onRemarkText={setRemarkText} onSubmit={submitUpdate} onComplete={completeAssignedTask} onAddRemark={addRemark} /> : activeTab === "team-updates" ? <TeamUpdatesV2 workDate={workDate} setWorkDate={setWorkDate} members={teamMembers} /> : activeTab === "attendance" ? <AttendanceModule attendance={attendance} businessDate={businessDate} canViewTeam={canViewTeam} /> : <RoleManagement users={allUsers} selfId={user.id} isBusy={isBusy} onChangeRole={changeRole} />}
+          {selectedEmployeeId ? <EmployeeDetailCanvas employeeId={selectedEmployeeId} viewerRole={user.role} onBack={() => setSelectedEmployeeId(null)} onChanged={() => { void reloadCore(); void loadTeam(); void loadUsers(); }} /> : isLoading ? <LoadingState /> : activeTab === "my-updates" ? <MyUpdatesV2 attendance={attendance} businessDate={businessDate} workDate={workDate} setWorkDate={setWorkDate} update={selectedUpdate} updates={updates} tasks={tasks} draftTasks={draftTasks} blockers={blockers} remarkText={remarkText} isBusy={isBusy} onDraftTasks={setDraftTasks} onBlockers={setBlockers} onRemarkText={setRemarkText} onSubmit={submitUpdate} onComplete={completeAssignedTask} onAddRemark={addRemark} /> : activeTab === "team-updates" ? <TeamStatusCanvas workDate={workDate} setWorkDate={setWorkDate} members={teamMembers} onOpenEmployee={setSelectedEmployeeId} onAssigned={() => { void reloadCore(); void loadTeam(); }} /> : activeTab === "attendance" ? <AttendanceModule attendance={attendance} businessDate={businessDate} canViewTeam={canViewTeam} /> : <AccessControlPanel users={allUsers} selfId={user.id} initialAdminEmail={initialAdminEmail} isBusy={isBusy} onChangeRole={changeRole} onChangeActivity={changeActivity} />}
         </section>
       </div>
       {isDrawerOpen && <NotificationDrawer notifications={notifications} onClose={() => setIsDrawerOpen(false)} onMarkRead={markRead} />}

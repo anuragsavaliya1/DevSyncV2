@@ -62,6 +62,26 @@ The live v1 Admin session was inspected read-only across Team Updates list and g
 
 An implementation-level dependency/function removal inventory is **not available** from UI inspection. It would require read-only access to the v1 repository or a source export. That is a different question from “what did you change in v1?”—the verified answer to that is **nothing**.
 
+## v2 parity implementation progress
+
+The highest-priority Admin/Manager gaps are now implemented in v2: list and grid Team Status views show hours and blockers, both expose an employee-history action, and the selected employee opens in a context-preserving review canvas. The canvas loads real MongoDB work history with Last 7 days, This month, All time, explicit date, and text filters; it includes pending/completed task tabs and inline remarks. In live Admin QA, the existing secondary Developer record and its recorded work update rendered correctly in that view.
+
+Task removal is now an **Admin-only soft archive**, rather than a hard database delete. It requires a confirmation dialog and writes an audit event; archived tasks are excluded from active task lists, comments, and completion actions while their record remains retained. Employee removal is intentionally replaced with audited Admin deactivation/reactivation, which preserves all historical records, blocks the inactive user from creating a fresh DevSync session, prevents self-deactivation, and permanently protects the configured initial Admin from deactivation.
+
+The live Admin session was used to verify the selected secondary Developer’s real history, work update, blocker, completed task, embedded remark count, and task-archive confirmation warning. The employee deactivation confirmation warning was also checked and then cancelled. **Neither destructive confirmation was submitted**, so no user, task, attendance, or work-update data was altered during QA. The UI now includes explicit success feedback after an archive or activation-state change, but that success state remains deliberately unexecuted until the user explicitly approves modifying the secondary Developer or task.
+
+The selected employee’s bounded work-history filter was also applied against the real blocker text `nothing`; the matching work update remained visible. This verifies the filter request, server-side bounded query, and rendered history path without creating or changing data.
+
+With explicit user approval, one task named `DevSync QA — archive validation` was assigned to the secondary Developer and then archived through the new Admin confirmation dialog. The screen showed the assignment success state, the QA task appeared in the pending count, the archive success state stated that its audit history was retained, and the pending count returned to zero. The existing completed task, employee access state, role, attendance, and work update were not changed.
+
+With separate user approval, the secondary account was temporarily promoted from Developer to Manager. Its authenticated workspace exposed Team Updates, Attendance, employee-history review, and task-assignment presentation; it did **not** expose Role Management or the Admin-only task Archive control. Its request to the Admin-only user-directory endpoint returned server-enforced `403 Forbidden`. The secondary account was then restored to **Developer**, which was verified in the live Admin directory. The temporary role change created the expected audited role-change history; no operational records were changed by the boundary test.
+
+The selected secondary Developer’s history was rechecked under the **This month** range and then with explicit start/end dates of `2026-08-27`. In both cases, its one matching work update remained visible. These were read-only requests and did not change any data.
+
+The task-archive route was tightened to reject non-Admin users with an explicit `403 Forbidden` before it reads a task identifier or reaches archive code, matching the existing employee-activity guard. Focused route tests now prove that a Manager cannot trigger either task archival or employee activation-state changes, even with malformed task IDs or request bodies; neither repository mutation is invoked. The full TypeScript check, nine-file Vitest suite with 19 tests, live credential checks, and a production build then passed.
+
+At a 375×812 viewport, both the public DevSync login and native Google sign-in pages render cleanly with readable copy and an accessible primary action. The capture redirects the unauthenticated dashboard to login as designed. The authenticated mobile workspace still requires one session-level check on a real phone or narrow desktop browser before production release.
+
 ## Recommended v2 implementation order
 
 | Order | Deliverable | Why this order |

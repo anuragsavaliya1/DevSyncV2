@@ -6,7 +6,7 @@ import "server-only";
 import { ObjectId, type WithId } from "mongodb";
 import { getMongoDatabase } from "@/lib/mongodb";
 import { classifyOfficePunchIn, isPermittedWorkUpdateDate, sumTaskMinutes } from "@/lib/operation-rules";
-import type { DevSyncUser } from "@/lib/users";
+import { getUserById, type DevSyncUser } from "@/lib/users";
 
 const INDIA_TIME_ZONE = "Asia/Kolkata";
 
@@ -49,6 +49,8 @@ type AssignedTaskDocument = {
   remarks: TaskRemark[];
   createdAt: Date;
   updatedAt: Date;
+  deletedAt?: Date;
+  deletedByUserId?: ObjectId;
 };
 
 type NotificationDocument = {
@@ -199,12 +201,18 @@ export async function saveWorkUpdate(user: DevSyncUser, input: { updateDate: str
   return mapUpdate(document);
 }
 
-export async function listWorkUpdates(input: { userId?: string; updateDate?: string }) {
+export async function listWorkUpdates(input: { userId?: string; updateDate?: string; fromDate?: string; toDate?: string; query?: string }) {
   await ensureOperationIndexes();
   const database = await getMongoDatabase();
   const query: Record<string, unknown> = {};
   if (input.userId) query.userId = objectId(input.userId, "user ID");
   if (input.updateDate) query.updateDate = input.updateDate;
+  if (input.fromDate || input.toDate) query.updateDate = { ...(input.fromDate ? { $gte: input.fromDate } : {}), ...(input.toDate ? { $lte: input.toDate } : {}) };
+  if (input.query) {
+    const escaped = input.query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const expression = new RegExp(escaped, "i");
+    query.$or = [{ "tasks.description": expression }, { blockers: expression }];
+  }
   const documents = await database.collection<WorkUpdateDocument>("workUpdates").find(query).sort({ updateDate: -1, submittedAt: -1 }).toArray();
   return documents.map(mapUpdate);
 }
@@ -213,6 +221,8 @@ export async function assignTask(actor: DevSyncUser, input: { developerUserId: s
   if (!canViewTeamData(actor)) throw new Error("Only a Manager or Admin can assign tasks.");
   const description = input.description.trim();
   if (description.length < 3 || description.length > 2000) throw new Error("Task description must be between 3 and 2000 characters.");
+  const assignee = await getUserById(input.developerUserId);
+  if (!assignee || !assignee.isActive) throw new Error("Select an active employee.");
   await ensureOperationIndexes();
   const database = await getMongoDatabase();
   const now = new Date();
@@ -227,7 +237,7 @@ export async function completeTask(actor: DevSyncUser, taskId: string) {
   const database = await getMongoDatabase();
   const assignedTasks = database.collection<AssignedTaskDocument>("assignedTasks");
   const _id = objectId(taskId, "task ID");
-  const task = await assignedTasks.findOne({ _id });
+  const task = await assignedTasks.findOne({ _id, deletedAt: { $exists: false } });
   if (!task) throw new Error("Task not found.");
   if (task.developerUserId.toHexString() !== actor.id && !canViewTeamData(actor)) throw new Error("You cannot complete this task.");
   if (task.status === "completed") return mapTask(task);
@@ -244,7 +254,7 @@ export async function addTaskRemark(actor: DevSyncUser, taskId: string, text: st
   const database = await getMongoDatabase();
   const assignedTasks = database.collection<AssignedTaskDocument>("assignedTasks");
   const _id = objectId(taskId, "task ID");
-  const task = await assignedTasks.findOne({ _id });
+  const task = await assignedTasks.findOne({ _id, deletedAt: { $exists: false } });
   if (!task) throw new Error("Task not found.");
   if (task.developerUserId.toHexString() !== actor.id && !canViewTeamData(actor)) throw new Error("You cannot comment on this task.");
   const remark: TaskRemark = { id: new ObjectId().toHexString(), userId: actor.id, userName: actor.displayName || actor.email, text: trimmed, createdAt: new Date() };
@@ -255,7 +265,7 @@ export async function addTaskRemark(actor: DevSyncUser, taskId: string, text: st
 export async function listAssignedTasks(input: { developerUserId: string; status?: AssignedTaskStatus }) {
   await ensureOperationIndexes();
   const database = await getMongoDatabase();
-  const query: Record<string, unknown> = { developerUserId: objectId(input.developerUserId, "developer user ID") };
+  const query: Record<string, unknown> = { developerUserId: objectId(input.developerUserId, "developer user ID"), deletedAt: { $exists: false } };
   if (input.status) query.status = input.status;
   const documents = await database.collection<AssignedTaskDocument>("assignedTasks").find(query).sort({ assignedAt: -1 }).toArray();
   return documents.map(mapTask);
@@ -265,8 +275,19 @@ export async function deleteAssignedTask(actor: DevSyncUser, taskId: string) {
   if (actor.role !== "admin") throw new Error("Only an Admin can delete tasks.");
   await ensureOperationIndexes();
   const database = await getMongoDatabase();
-  const result = await database.collection<AssignedTaskDocument>("assignedTasks").deleteOne({ _id: objectId(taskId, "task ID") });
-  if (!result.deletedCount) throw new Error("Task not found.");
+  const _id = objectId(taskId, "task ID");
+  const tasks = database.collection<AssignedTaskDocument>("assignedTasks");
+  const task = await tasks.findOne({ _id, deletedAt: { $exists: false } });
+  if (!task) throw new Error("Task not found.");
+  const now = new Date();
+  await tasks.updateOne({ _id }, { $set: { deletedAt: now, deletedByUserId: objectId(actor.id, "actor user ID"), updatedAt: now } });
+  await database.collection("auditEvents").insertOne({
+    actorFirebaseUid: actor.firebaseUid,
+    targetUserId: task.developerUserId,
+    action: "task.archived",
+    metadata: { taskId, status: task.status, description: task.description },
+    createdAt: now,
+  });
 }
 
 export async function listNotifications(userId: string) {

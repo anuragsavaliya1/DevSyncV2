@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     const { idToken } = sessionSchema.parse(await request.json());
     const { decodedToken, sessionCookie } = await createFirebaseSession(idToken, sessionDurationMs);
     const user = await upsertFirebaseUser(decodedToken);
+    if (!user.isActive) throw new Error("This DevSync account is inactive.");
 
     const response = NextResponse.json({ user });
     response.cookies.set(DEV_SYNC_SESSION_COOKIE, sessionCookie, {

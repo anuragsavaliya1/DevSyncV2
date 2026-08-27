@@ -30,7 +30,7 @@
 - [x] Verify an actual authenticated background polling cycle from an already-populated team or attendance view without blocking the workspace.
 - [x] Add a lightweight last-refreshed indicator so DevSync polling cycles can be observed during QA without changing operational data.
 - [ ] Validate the authenticated mobile dashboard’s navigation, forms, drawer, and tab controls.
-- [ ] Test a safe authenticated Admin mutation with UI success and error feedback without altering critical operational data.
+- [ ] Complete safe authenticated Admin mutation validation, including a visible failure state that does not alter critical operational data.
 - [x] Ensure destructive task routes authenticate before validating task identifiers or request payloads, returning 401/403 for unauthenticated calls.
 - [x] Align the health endpoint’s identity-provider status with Firebase Authentication instead of the retired Google OAuth configuration.
 - [x] Audit all JSON route handlers to return explicit 401/403 responses instead of login redirects for unauthenticated or unauthorized API requests.
@@ -38,3 +38,17 @@
 - [x] Complete the remaining read-only v1 parity sweep for notifications, grid view, and completed-task/remark/delete-task presentation.
 - [ ] If v1 source access is provided, produce a technical inventory of v1-only functions, integrations, and dependencies; otherwise retain only the verified no-v1-changes statement.
 - [x] Prioritize confirmed v2 capability gaps after the live v1 comparison before implementing any parity work.
+- [x] Define safe activation/deactivation rules that preserve historical MongoDB records and protect the initial Admin.
+- [x] Add Manager/Admin employee-detail APIs for selected-employee task and work-history review with bounded server-side filtering.
+- [x] Add Admin-only task deletion and employee deactivation/reactivation APIs with audit events and explicit 401/403 safeguards.
+- [x] Build Manager/Admin employee detail navigation, task status review, and work-history filters from the Team Updates list and grid views.
+- [x] Build guarded confirmation dialogs and clear success/error feedback for task deletion and employee activation changes.
+- [x] Complete automated Manager destructive-endpoint checks and Admin-side employee-history date-filter validation using the approved secondary employee record.
+- [x] Verify server-enforced 403 responses for Manager requests to Admin-only task archive and employee activity endpoints without modifying records.
+- [x] Browser-verify Last 7 days, This month, and explicit employee-history date filters against existing real data.
+- [x] Add explicit success feedback after employee deactivation/reactivation and Admin task archival actions, rather than relying only on a reload.
+- [ ] Browser-verify the Admin task-archive confirmation flow and its success/error UX without leaving an ambiguous post-action state.
+- [x] Browser-verify the Admin task-archive confirmation warning and cancellation path without modifying the selected task.
+- [x] Browser-verify selected-employee history filters against existing real data without creating or changing records.
+- [ ] Browser-test a controlled Admin task-archive failure and confirm clear error feedback without changing data.
+- [ ] Add focused automated coverage that a failed employee activity change is surfaced as clear Admin UI feedback without applying an activity change.
