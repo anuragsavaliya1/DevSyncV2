@@ -56,3 +56,7 @@
 - [x] Publish the corrected full-stack configuration and verify managed hosting uses the Next.js server artifact rather than the retired Vite `dist/public` upload path.
 - [x] Add a complete explicit Next.js Docker runtime contract because managed deployment continues to select the legacy static uploader despite corrected project metadata.
 - [x] Ensure the explicit Next.js image provides a harmless non-empty `dist/public` compatibility directory if the managed builder still appends its legacy static upload stage.
+
+- [x] Make punch-in/punch-out attendance status and action treatment clearly red while preserving the existing attendance logic.
+- [x] Verify the red attendance treatment visually and through project checks.
+- [ ] Browser-verify the rendered red punch-in/punch-out attendance treatment on the live dashboard and record the result before marking visual verification complete.
