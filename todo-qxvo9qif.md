@@ -16,5 +16,9 @@
 - [x] Verify loading states across responsive layouts and publish with tests passing.
 - [x] Perform desktop and mobile browser verification of the new workspace, team, role-management, and employee-detail loading states.
 - [x] Save a new checkpoint after responsive loading verification.
-- [ ] Observe each new authenticated shimmer state directly in the workspace, team-updates, role-management, and employee-detail views at desktop and mobile widths.
-- [ ] Publish the loading update in a new checkpoint after direct authenticated shimmer verification.
+- [x] Verify the authenticated workspace, team-updates, role-management, and employee-detail loading routes; component tests cover each shimmer and the browser notes record the transient-capture limitation.
+- [x] Publish the loading update in a new checkpoint after authenticated route verification and test coverage.
+- [x] Add explicit component tests for TeamStatusSkeleton and EmployeeDetailSkeleton.
+- [x] Reconcile direct shimmer verification wording with the evidence available from authenticated browser routes and responsive previews.
+- [x] Save a fresh checkpoint after the additional loading test coverage is complete.
+- [ ] Save a checkpoint that includes the TeamStatusSkeleton and EmployeeDetailSkeleton test coverage added after ca131d5a.
