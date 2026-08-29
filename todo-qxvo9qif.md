@@ -21,4 +21,4 @@
 - [x] Add explicit component tests for TeamStatusSkeleton and EmployeeDetailSkeleton.
 - [x] Reconcile direct shimmer verification wording with the evidence available from authenticated browser routes and responsive previews.
 - [x] Save a fresh checkpoint after the additional loading test coverage is complete.
-- [ ] Save a checkpoint that includes the TeamStatusSkeleton and EmployeeDetailSkeleton test coverage added after ca131d5a.
+- [x] Save a checkpoint that includes the TeamStatusSkeleton and EmployeeDetailSkeleton test coverage added after ca131d5a.
