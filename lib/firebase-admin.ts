@@ -38,3 +38,12 @@ export async function createFirebaseSession(idToken: string, expiresInMs: number
 export async function verifyFirebaseSession(sessionCookie: string): Promise<DecodedIdToken> {
   return getAuth(getFirebaseAdminApp()).verifySessionCookie(sessionCookie, true);
 }
+
+export async function deleteFirebaseUser(firebaseUid: string) {
+  try {
+    await getAuth(getFirebaseAdminApp()).deleteUser(firebaseUid);
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "auth/user-not-found") return;
+    throw error;
+  }
+}

@@ -6,14 +6,16 @@ const mocks = vi.hoisted(() => ({
   completeTask: vi.fn(),
   deleteAssignedTask: vi.fn(),
   changeUserActivity: vi.fn(),
+  permanentlyDeleteUser: vi.fn(),
 }));
 
 vi.mock("@/lib/session", () => ({ getCurrentUser: mocks.getCurrentUser }));
 vi.mock("@/lib/operations", () => ({ completeTask: mocks.completeTask, deleteAssignedTask: mocks.deleteAssignedTask }));
-vi.mock("@/lib/users", () => ({ changeUserActivity: mocks.changeUserActivity }));
+vi.mock("@/lib/users", () => ({ changeUserActivity: mocks.changeUserActivity, permanentlyDeleteUser: mocks.permanentlyDeleteUser }));
 
 import { DELETE as archiveTask } from "../app/api/tasks/[taskId]/route";
 import { PATCH as changeActivity } from "../app/api/admin/users/[userId]/activity/route";
+import { DELETE as deleteEmployee } from "../app/api/admin/users/[userId]/route";
 
 const manager = {
   id: "507f1f77bcf86cd799439011",
@@ -45,5 +47,14 @@ describe("Admin-only mutation guards", () => {
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: "Forbidden" });
     expect(mocks.changeUserActivity).not.toHaveBeenCalled();
+  });
+
+  it("rejects a Manager permanent employee deletion before the target account is touched", async () => {
+    mocks.getCurrentUser.mockResolvedValue(manager);
+    const response = await deleteEmployee(new NextRequest("http://localhost/api/admin/users/not-a-real-user", { method: "DELETE" }), { params: Promise.resolve({ userId: "not-a-real-user" }) });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: "Forbidden" });
+    expect(mocks.permanentlyDeleteUser).not.toHaveBeenCalled();
   });
 });

@@ -5,7 +5,8 @@ import { ObjectId } from "mongodb";
 import { getMongoDatabase } from "@/lib/mongodb";
 import { type Role, isRole } from "@/lib/roles";
 import { initialRoleForVerifiedEmail } from "@/lib/provisioning";
-import { userActivityChangeError } from "@/lib/user-lifecycle-rules";
+import { userActivityChangeError, userPermanentDeleteError, userRoleChangeError } from "@/lib/user-lifecycle-rules";
+import { deleteFirebaseUser } from "@/lib/firebase-admin";
 
 export type DevSyncUser = {
   id: string;
@@ -142,7 +143,9 @@ export async function changeUserRole(input: { actor: DevSyncUser; targetUserId: 
   const targetId = new ObjectId(input.targetUserId);
   const target = await users.findOne({ _id: targetId });
   if (!target) throw new Error("User not found.");
-  if (target.email === getInitialAdminEmail() && input.role !== "admin") throw new Error("The initial Admin cannot be demoted through this endpoint.");
+  const activeAdminCount = await users.countDocuments({ role: "admin", isActive: true });
+  const safeguard = userRoleChangeError({ targetEmail: target.email, targetRole: target.role, targetIsActive: target.isActive, nextRole: input.role, initialAdminEmail: getInitialAdminEmail(), activeAdminCount });
+  if (safeguard) throw new Error(safeguard);
 
   const now = new Date();
   await users.updateOne({ _id: targetId }, { $set: { role: input.role, updatedAt: now } });
@@ -170,12 +173,15 @@ export async function changeUserActivity(input: { actor: DevSyncUser; targetUser
   const target = await users.findOne({ _id: targetId });
   if (!target) throw new Error("User not found.");
 
+  const activeAdminCount = await users.countDocuments({ role: "admin", isActive: true });
   const safeguard = userActivityChangeError({
     actorUserId: input.actor.id,
     targetUserId: input.targetUserId,
     targetEmail: target.email,
     nextIsActive: input.isActive,
     initialAdminEmail: getInitialAdminEmail(),
+    targetRole: target.role,
+    activeAdminCount,
   });
   if (safeguard) throw new Error(safeguard);
 
@@ -192,4 +198,37 @@ export async function changeUserActivity(input: { actor: DevSyncUser; targetUser
   const updated = await users.findOne({ _id: targetId });
   if (!updated) throw new Error("Employee access could not be updated.");
   return toPublicUser(updated);
+}
+
+/** Permanently removes an employee account and every operational record owned by or attributed to it. */
+export async function permanentlyDeleteUser(input: { actor: DevSyncUser; targetUserId: string }): Promise<void> {
+  if (input.actor.role !== "admin") throw new Error("Only an Admin can permanently delete employees.");
+  if (!ObjectId.isValid(input.targetUserId)) throw new Error("Invalid user ID.");
+
+  await ensureUserIndexes();
+  const database = await getMongoDatabase();
+  const users = database.collection<DevSyncUserDocument>("users");
+  const targetId = new ObjectId(input.targetUserId);
+  const target = await users.findOne({ _id: targetId });
+  if (!target) throw new Error("User not found.");
+  const safeguard = userPermanentDeleteError({ actorUserId: input.actor.id, targetUserId: input.targetUserId, targetEmail: target.email, targetRole: target.role, initialAdminEmail: getInitialAdminEmail() });
+  if (safeguard) throw new Error(safeguard);
+
+  // Remove the Firebase identity first. If this fails, MongoDB records stay intact and the operation can be retried safely.
+  await deleteFirebaseUser(target.firebaseUid);
+
+  const taskCollection = database.collection<{ developerUserId: ObjectId; assignedByUserId: ObjectId; remarks: { userId: string }[] }>("assignedTasks");
+  const ownedTaskIds = (await taskCollection.find({ $or: [{ developerUserId: targetId }, { assignedByUserId: targetId }] }, { projection: { _id: 1 } }).toArray()).map((task) => task._id);
+  const now = new Date();
+
+  await Promise.all([
+    database.collection("attendance").deleteMany({ userId: targetId }),
+    database.collection("workUpdates").deleteMany({ userId: targetId }),
+    taskCollection.deleteMany({ $or: [{ developerUserId: targetId }, { assignedByUserId: targetId }] }),
+    taskCollection.updateMany({ "remarks.userId": input.targetUserId }, { $pull: { remarks: { userId: input.targetUserId } }, $set: { updatedAt: now } }),
+    database.collection("notifications").deleteMany({ $or: [{ recipientUserId: targetId }, { "resource.id": { $in: ownedTaskIds } }] }),
+    database.collection("auditEvents").deleteMany({ $or: [{ targetUserId: targetId }, { actorFirebaseUid: target.firebaseUid }] }),
+  ]);
+
+  await users.deleteOne({ _id: targetId });
 }

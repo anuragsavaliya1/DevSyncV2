@@ -1,8 +1,10 @@
 /** @vitest-environment jsdom */
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccessControlPanel } from "../components/workspace/team-management";
+
+afterEach(() => cleanup());
 
 const users = [
   { id: "admin-id", email: "admin@example.com", displayName: "Admin", photoUrl: null, role: "admin" as const, isActive: true, createdAt: "2026-08-27T00:00:00.000Z", lastSignedInAt: "2026-08-27T00:00:00.000Z" },
@@ -24,3 +26,21 @@ describe("AccessControlPanel", () => {
     expect(screen.getAllByText("Active")).toHaveLength(2);
   });
 });
+
+  it("requires an explicit DELETE confirmation and preserves the employee when deletion fails", async () => {
+    const onDelete = vi.fn().mockRejectedValue(new Error("Delete failed"));
+    render(<AccessControlPanel users={users} selfId="admin-id" initialAdminEmail="admin@example.com" isBusy={false} onChangeRole={vi.fn()} onChangeActivity={vi.fn()} onDelete={onDelete} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[1]);
+    const deleteButton = screen.getByRole("button", { name: "Delete permanently" });
+    expect(deleteButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Type DELETE to confirm"), { target: { value: "DELETE" } });
+    expect(deleteButton).toBeEnabled();
+    fireEvent.click(deleteButton);
+
+    const statuses = await screen.findAllByRole("status");
+    expect(statuses.at(-1)).toHaveTextContent("Delete failed");
+    expect(onDelete).toHaveBeenCalledWith("developer-id");
+    expect(screen.getByText("developer@example.com")).toBeInTheDocument();
+  });
