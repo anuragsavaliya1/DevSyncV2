@@ -59,4 +59,4 @@
 
 - [x] Make punch-in/punch-out attendance status and action treatment clearly red while preserving the existing attendance logic.
 - [x] Verify the red attendance treatment visually and through project checks.
-- [ ] Browser-verify the rendered red punch-in/punch-out attendance treatment on the live dashboard and record the result before marking visual verification complete.
+- [x] Browser-verify the rendered red punch-in/punch-out attendance treatment on the live dashboard and record the result before marking visual verification complete.
