@@ -11,3 +11,10 @@
 - [x] Block deactivation or destructive role changes that would remove the last active admin, with backend coverage.
 - [x] Attempt authenticated browser verification of the admin Role management and permanent-delete flow; document the external Firebase domain blocker.
 - [x] Diagnose and document the Firebase `auth/unauthorized-domain` error blocking authenticated browser verification; the deployed preview domain must be authorized in Firebase Console.
+- [x] Add shimmer/skeleton loading states for page-level and data-panel loading.
+- [x] Add or refine compact loaders for employee actions, task actions, and refresh states.
+- [x] Verify loading states across responsive layouts and publish with tests passing.
+- [x] Perform desktop and mobile browser verification of the new workspace, team, role-management, and employee-detail loading states.
+- [x] Save a new checkpoint after responsive loading verification.
+- [ ] Observe each new authenticated shimmer state directly in the workspace, team-updates, role-management, and employee-detail views at desktop and mobile widths.
+- [ ] Publish the loading update in a new checkpoint after direct authenticated shimmer verification.

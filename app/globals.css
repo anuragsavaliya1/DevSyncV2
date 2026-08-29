@@ -22,3 +22,18 @@ body {
 }
 
 .font-display { font-family: "DM Sans", Manrope, ui-sans-serif, system-ui, sans-serif; }
+
+@keyframes devsync-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(105deg, #eef3f4 20%, #f8fbfb 38%, #eef3f4 56%);
+  background-size: 200% 100%;
+  animation: devsync-shimmer 1.35s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer { animation: none; }
+}
