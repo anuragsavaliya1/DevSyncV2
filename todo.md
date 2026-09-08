@@ -74,4 +74,7 @@
 - [x] Reconcile recovered canonical tests with the merged QA behavior: 16 test files and 40 tests passing.
 - [x] Verify TypeScript and Next.js production build successfully.
 - [x] Verify desktop and mobile login/dashboard rendering after repository recovery.
-- [ ] Complete authenticated production browser verification of the merged QA workflows after publishing.
+- [ ] Complete authenticated production browser verification of the merged QA workflows after publishing: authenticated dashboard, red Punch in state, attendance ledger, live notification drawer with India-formatted date, and Team updates/date controls verified without mutating data.
+- [ ] Fix published Team updates assignee control still rendering as native select instead of the approved clearer picker; TypeScript, tests, and production build passed after the correction.
+- [ ] Publish the Team Updates assignee-picker correction and save a managed checkpoint.
+- [ ] Re-run authenticated production browser QA on the published Team Updates assignee picker and corrected QA workflows.
