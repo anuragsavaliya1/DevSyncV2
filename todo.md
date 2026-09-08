@@ -60,3 +60,18 @@
 - [x] Make punch-in/punch-out attendance status and action treatment clearly red while preserving the existing attendance logic.
 - [x] Verify the red attendance treatment visually and through project checks.
 - [x] Browser-verify the rendered red punch-in/punch-out attendance treatment on the live dashboard and record the result before marking visual verification complete.
+
+
+## Recovered Canonical QA Merge — 2026-09-08
+
+- [x] Preserve the newer guarded permanent employee deletion flow by explicit user decision.
+- [x] Merge append-only work-update persistence, whole-hour validation, zero rejection, Enter submission, and fixed yesterday eligibility.
+- [x] Merge live attendance clock, completed punch duration, team attendance duration ledger, and employee attendance history.
+- [x] Merge live/background notification refresh, India date/time formatting, and desktop alert permission flow.
+- [x] Merge mutually exclusive history quick filters, clearable history search, and improved assignee picker.
+- [x] Merge deterministic daily motivation and interactive account profile dialog.
+- [x] Add focused regression coverage for attendance colors and employee attendance duration.
+- [x] Reconcile recovered canonical tests with the merged QA behavior: 16 test files and 40 tests passing.
+- [x] Verify TypeScript and Next.js production build successfully.
+- [x] Verify desktop and mobile login/dashboard rendering after repository recovery.
+- [ ] Complete authenticated production browser verification of the merged QA workflows after publishing.
