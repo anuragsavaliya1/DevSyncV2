@@ -78,3 +78,10 @@
 - [x] Fix published Team updates assignee control still rendering as native select instead of the approved clearer picker; TypeScript, tests, and production build passed after the correction.
 - [x] Publish the Team Updates assignee-picker correction and save a managed checkpoint.
 - [x] Re-run authenticated production browser QA on the published Team Updates assignee picker and corrected QA workflows; the live popover opened with all active employees and no data was mutated.
+
+
+## GitHub Export — 2026-09-08
+
+- [ ] Audit the local repository for secrets and deployment-only files before GitHub export.
+- [ ] Commit and push the validated DevSync v2 source to `anuragsavaliya1/DevSyncV2`.
+- [ ] Verify the remote branch, commit, and repository contents after pushing.
