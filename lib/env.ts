@@ -5,7 +5,10 @@ const serverEnvironment = z.object({
   MONGODB_URI: z.string().url(),
   MONGODB_DB_NAME: z.string().min(1).default("devsync_v2"),
   FIREBASE_SERVICE_ACCOUNT_JSON: z.string().min(1),
-  INITIAL_ADMIN_EMAIL: z.string().email().transform((email) => email.toLowerCase()),
+  INITIAL_ADMIN_EMAIL: z
+    .string()
+    .email()
+    .transform(email => email.toLowerCase()),
 });
 
 export type ServerEnvironment = z.infer<typeof serverEnvironment>;

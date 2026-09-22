@@ -4,15 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev -H 0.0.0.0",
+    "dev": "next dev --turbopack -p 3000",
     "build": "NODE_ENV=production next build",
-    "start": "NODE_ENV=production next start -H 0.0.0.0 -p ${PORT:-3000}",
+    "start": "NODE_ENV=production next start -H 192.168.1.48 -p ${PORT:-3000}",
     "check": "tsc --noEmit",
     "test": "vitest run",
     "format": "prettier --write ."
   },
+  
   "dependencies": {
+    "@tanstack/react-query": "^5.102.8",
     "clsx": "^2.1.1",
+    "exceljs": "^4.4.0",
     "firebase": "^12.3.0",
     "firebase-admin": "^13.4.0",
     "framer-motion": "^12.23.22",
@@ -21,6 +24,7 @@
     "next": "16.3.3",
     "react": "19.2.1",
     "react-dom": "19.2.1",
+    "resend": "^6.28.1",
     "tailwind-merge": "^3.3.1",
     "zod": "^4.1.12"
   },

@@ -8,7 +8,9 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const showDiagnosticError = process.env.NODE_ENV !== "production" && new URL(request.url).searchParams.get("devAuthTest") === "error";
+  const showDiagnosticError =
+    process.env.NODE_ENV !== "production" &&
+    new URL(request.url).searchParams.get("devAuthTest") === "error";
   const config = JSON.stringify({
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -18,7 +20,8 @@ export async function GET(request: Request) {
 
   const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DevSync secure access</title>
-<style>body{margin:0;background:#f6f8fb;color:#173247;font-family:Arial,sans-serif;display:grid;place-items:center;min-height:100vh}.card{width:min(420px,calc(100vw - 40px));box-sizing:border-box;padding:38px;border:1px solid #e4ecef;border-radius:24px;background:#fff;text-align:center;box-shadow:0 20px 60px rgba(25,55,75,.09)}.eyebrow{color:#0e9384;font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}h1{margin:10px 0 12px;font-size:27px;letter-spacing:-.05em}p{color:#718494;font-size:14px;line-height:1.6}button{width:100%;margin-top:20px;border:0;border-radius:12px;padding:14px 16px;background:#0e9384;color:#fff;font-size:14px;font-weight:800;cursor:pointer}button:disabled{opacity:.65;cursor:wait}.error{display:none;margin-top:16px;padding:12px;border:1px solid #f7c9c4;border-radius:12px;background:#fff5f4;color:#a4473d;font-size:12px;font-weight:700;text-align:left}.back{display:inline-block;margin-top:18px;color:#718494;font-size:12px;font-weight:700;text-decoration:none}</style></head>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#eef2f5;color:#102a3a;font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;-webkit-font-smoothing:antialiased}.card{width:min(420px,calc(100vw - 40px));box-sizing:border-box;padding:40px;border:1px solid #e4ecef;border-radius:28px;background:#fff;text-align:center;box-shadow:0 18px 50px rgba(16,42,58,.08)}.eyebrow{color:#0d8f81;font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase}h1{margin:12px 0 12px;font-family:Sora,"IBM Plex Sans",sans-serif;font-size:28px;letter-spacing:-.04em;font-weight:700;color:#102a3a}p{color:#617687;font-size:15px;line-height:1.6;font-weight:500}button{width:100%;margin-top:22px;border:0;border-radius:16px;padding:14px 16px;background:#0d8f81;color:#fff;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 12px 28px rgba(13,143,129,.28)}button:disabled{opacity:.65;cursor:wait}.error{display:none;margin-top:16px;padding:12px;border:1px solid #f7c9c4;border-radius:12px;background:#fff5f4;color:#a4473d;font-size:12px;font-weight:600;text-align:left}.back{display:inline-block;margin-top:18px;color:#617687;font-size:12px;font-weight:600;text-decoration:none}</style></head>
 <body><section class="card"><div class="eyebrow">DevSync secure access</div><h1>Continue with Google</h1><p id="status">Start Google sign-in from this secure browser page.</p><button id="start">Start Google sign-in</button><div id="error" class="error"></div><a class="back" href="/login">Back to DevSync login</a></section>
 <script type="module">
   import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
@@ -29,9 +32,14 @@ export async function GET(request: Request) {
   try {
     if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId) throw new Error("Firebase web configuration is missing.");
     const app = getApps().length ? getApp() : initializeApp(config); const auth = getAuth(app); const provider = new GoogleAuthProvider(); provider.setCustomParameters({ prompt: "select_account" });
-    button.addEventListener("click", async () => { button.disabled = true; button.textContent = "Opening Google…"; error.style.display = "none"; try { const result = await signInWithPopup(auth, provider); status.textContent = "Creating your protected DevSync session…"; const response = await fetch("/api/auth/session", { method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include", body:JSON.stringify({idToken:await result.user.getIdToken()}) }); if (!response.ok) throw new Error("Your Google account could not be approved for DevSync."); location.replace("/dashboard"); } catch (e) { showError(e && e.code ? "Google sign-in failed (" + e.code + ")." : e.message || "Google sign-in could not start."); } });
+    button.addEventListener("click", async () => { button.disabled = true; button.textContent = "Opening Google…"; error.style.display = "none"; try { const result = await signInWithPopup(auth, provider); status.textContent = "Creating your protected DevSync session…"; const response = await fetch("/api/auth/session", { method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include", body:JSON.stringify({idToken:await result.user.getIdToken()}) }); if (!response.ok) throw new Error("Your Google account is being deactivated by DevSync."); location.replace("/dashboard"); } catch (e) { showError(e && e.code ? "Google sign-in failed (" + e.code + ")." : e.message || "Google sign-in could not start."); } });
     ${showDiagnosticError ? 'showError("Google sign-in failed (dev/controlled-failure).");' : ""}
   } catch (e) { showError(e && e.code ? "Google sign-in failed (" + e.code + ")." : e.message || "Google sign-in could not start."); }
 </script></body></html>`;
-  return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+  return new NextResponse(html, {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
 }

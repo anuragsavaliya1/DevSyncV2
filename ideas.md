@@ -2,11 +2,11 @@
 
 ## Three stylistic approaches
 
-| Theme Name | Very Brief Intro | Probability |
-| --- | --- | --- |
-| Quiet Command Center | A polished white operational workspace with confident navy structure, measured teal signals, and crisp work-state visibility. It should feel calm enough for daily use yet decisive enough for management workflows. | 0.07 |
-| Editorial Ledger | A warm-white, type-led interface that treats daily updates like a considered working journal, using high contrast and generous reading rhythm. It would elevate written task detail over operational density. | 0.04 |
-| Precision Canvas | A cool, clinical grid system with tokenized color and compact analytical controls, inspired by engineering consoles. It would optimize for rapid scanning and data comparison rather than approachability. | 0.09 |
+| Theme Name           | Very Brief Intro                                                                                                                                                                                                     | Probability |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| Quiet Command Center | A polished white operational workspace with confident navy structure, measured teal signals, and crisp work-state visibility. It should feel calm enough for daily use yet decisive enough for management workflows. | 0.07        |
+| Editorial Ledger     | A warm-white, type-led interface that treats daily updates like a considered working journal, using high contrast and generous reading rhythm. It would elevate written task detail over operational density.        | 0.04        |
+| Precision Canvas     | A cool, clinical grid system with tokenized color and compact analytical controls, inspired by engineering consoles. It would optimize for rapid scanning and data comparison rather than approachability.           | 0.09        |
 
 ## Chosen approach — Quiet Command Center
 

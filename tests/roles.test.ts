@@ -14,8 +14,23 @@ describe("DevSync roles", () => {
   });
 
   it("provisions verified Google accounts as Developers except for the configured initial Admin", () => {
-    expect(initialRoleForVerifiedEmail("anurag.xitijinfo@gmail.com", "anurag.xitijinfo@gmail.com")).toBe("admin");
-    expect(initialRoleForVerifiedEmail("employee@example.com", "anurag.xitijinfo@gmail.com")).toBe("developer");
-    expect(initialRoleForVerifiedEmail(" ANURAG.XITIJINFO@GMAIL.COM ", "anurag.xitijinfo@gmail.com")).toBe("admin");
+    expect(
+      initialRoleForVerifiedEmail(
+        "anurag.xitijinfo@gmail.com",
+        "anurag.xitijinfo@gmail.com"
+      )
+    ).toBe("admin");
+    expect(
+      initialRoleForVerifiedEmail(
+        "employee@example.com",
+        "anurag.xitijinfo@gmail.com"
+      )
+    ).toBe("developer");
+    expect(
+      initialRoleForVerifiedEmail(
+        " ANURAG.XITIJINFO@GMAIL.COM ",
+        "anurag.xitijinfo@gmail.com"
+      )
+    ).toBe("admin");
   });
 });

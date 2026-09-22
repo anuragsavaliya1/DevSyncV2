@@ -61,7 +61,6 @@
 - [x] Verify the red attendance treatment visually and through project checks.
 - [x] Browser-verify the rendered red punch-in/punch-out attendance treatment on the live dashboard and record the result before marking visual verification complete.
 
-
 ## Recovered Canonical QA Merge — 2026-09-08
 
 - [x] Preserve the newer guarded permanent employee deletion flow by explicit user decision.
@@ -78,7 +77,6 @@
 - [x] Fix published Team updates assignee control still rendering as native select instead of the approved clearer picker; TypeScript, tests, and production build passed after the correction.
 - [x] Publish the Team Updates assignee-picker correction and save a managed checkpoint.
 - [x] Re-run authenticated production browser QA on the published Team Updates assignee picker and corrected QA workflows; the live popover opened with all active employees and no data was mutated.
-
 
 ## GitHub Export — 2026-09-08
 

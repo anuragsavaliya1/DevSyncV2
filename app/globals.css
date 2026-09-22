@@ -1,39 +1,504 @@
 /**
- * Quiet Command Center design system: porcelain-white surfaces, ink-navy hierarchy,
- * Signal Teal action cues, and measured type for the DevSync v2 Next.js experience.
+ * Quiet Command Center design system: crisp operational surfaces, ink-navy hierarchy,
+ * Signal Teal cues, and enterprise typography for DevSync v2.
  */
 @import "tailwindcss";
 
-:root {
-  --background: #F6F8FB;
-  --foreground: #173247;
+/* Bind Tailwind font tokens to next/font variables (avoid --font-sans name clash). */
+@theme {
+  --font-sans:
+    var(--font-devsync-body), "IBM Plex Sans", ui-sans-serif, system-ui,
+    sans-serif;
+  --font-display:
+    var(--font-devsync-display), "Sora", ui-sans-serif, system-ui, sans-serif;
+  --color-ds-ink: #102a3a;
+  --color-ds-muted: #617687;
+  --color-ds-teal: #0d8f81;
+  --color-ds-teal-deep: #0a7267;
+  --color-ds-border: #e4ecef;
+  --color-ds-bg: #eef2f5;
 }
 
-* { box-sizing: border-box; }
+:root {
+  --background: #eef2f5;
+  --foreground: #102a3a;
+  --surface: #ffffff;
+  --border: #e4ecef;
+  --ink: #102a3a;
+  --ink-soft: #617687;
+  --teal: #0d8f81;
+  --accent: #0e9384;
+  accent-color: #0e9384;
+}
 
-html { background: var(--background); }
+* {
+  box-sizing: border-box;
+}
+
+/* Keep table headers aligned with body cells (UA default centers <th>). */
+table {
+  text-align: left;
+  border-collapse: collapse;
+}
+
+table th,
+table td {
+  text-align: left;
+  vertical-align: middle;
+}
+
+html {
+  background: var(--background);
+  height: 100%;
+}
 
 body {
   margin: 0;
-  background: var(--background);
+  min-height: 100%;
+  height: 100%;
   color: var(--foreground);
-  font-family: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background-color: var(--background);
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(238, 242, 245, 0) 220px
+    ),
+    radial-gradient(
+      900px 360px at 100% 0%,
+      rgba(13, 143, 129, 0.08),
+      transparent 60%
+    );
+  font-family:
+    var(--font-devsync-body), "IBM Plex Sans", ui-sans-serif, system-ui,
+    sans-serif;
+  font-size: 14.5px;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-.font-display { font-family: "DM Sans", Manrope, ui-sans-serif, system-ui, sans-serif; }
+.font-display,
+h1,
+h2 {
+  font-family:
+    var(--font-devsync-display), "Sora", ui-sans-serif, system-ui, sans-serif !important;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+}
+
+p,
+span,
+label,
+button,
+input,
+select,
+textarea,
+a,
+li,
+td,
+th {
+  font-family: inherit;
+}
+
+::selection {
+  background: rgba(13, 143, 129, 0.2);
+  color: #0b2433;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(13, 143, 129, 0.5);
+  outline-offset: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+/* App-wide interactive cursors: pointer when actionable, not-allowed when disabled. */
+button:not(:disabled),
+a[href],
+[role="button"]:not([aria-disabled="true"]),
+summary,
+label[for],
+select:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="date"]:not(:disabled),
+input[type="file"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+textarea:disabled,
+[aria-disabled="true"],
+.disabled\:cursor-not-allowed:disabled {
+  cursor: not-allowed;
+}
+
+input,
+select,
+textarea {
+  color: var(--ink);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #8fa0ad;
+  opacity: 1;
+}
+
+/* Shared select + date/time + text control polish (native controls, theme-aligned). */
+select.ds-control,
+input[type="date"].ds-control,
+input[type="time"].ds-control,
+textarea.ds-control,
+input[type="text"].ds-control {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #dde7eb;
+  border-radius: 0.875rem;
+  background-color: #f7f9fa;
+  color: #102a3a;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.35;
+  outline: none;
+  accent-color: #0e9384;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+select.ds-control,
+input[type="date"].ds-control,
+input[type="time"].ds-control,
+input[type="text"].ds-control {
+  min-height: 2.5rem;
+  padding: 0.55rem 2.35rem 0.55rem 0.85rem;
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 0.95rem;
+}
+
+textarea.ds-control {
+  min-height: 5.5rem;
+  padding: 0.75rem 0.85rem;
+  font-weight: 600;
+  resize: vertical;
+}
+
+textarea.ds-control::placeholder,
+input[type="text"].ds-control::placeholder {
+  color: #8fa0ad;
+  font-weight: 500;
+}
+
+select.ds-control {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23718494' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+input[type="date"].ds-control {
+  position: relative;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23718494' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M3 9h18M8 3v4M16 3v4'/%3E%3C/svg%3E");
+}
+
+input[type="time"].ds-control {
+  position: relative;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230E9384' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+  accent-color: #0e9384;
+  color-scheme: light;
+}
+
+/* Selected hour / minute / AM-PM segments — theme teal instead of browser blue */
+input[type="time"].ds-control::-webkit-datetime-edit-hour-field:focus,
+input[type="time"].ds-control::-webkit-datetime-edit-minute-field:focus,
+input[type="time"].ds-control::-webkit-datetime-edit-second-field:focus,
+input[type="time"].ds-control::-webkit-datetime-edit-ampm-field:focus,
+input[type="time"]::-webkit-datetime-edit-hour-field:focus,
+input[type="time"]::-webkit-datetime-edit-minute-field:focus,
+input[type="time"]::-webkit-datetime-edit-second-field:focus,
+input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
+  background-color: #0e9384;
+  color: #ffffff;
+  border-radius: 0.25rem;
+  outline: none;
+}
+
+input[type="time"].ds-control::-webkit-datetime-edit-hour-field:focus-visible,
+input[type="time"].ds-control::-webkit-datetime-edit-minute-field:focus-visible,
+input[type="time"].ds-control::-webkit-datetime-edit-ampm-field:focus-visible {
+  background-color: #0e9384;
+  color: #ffffff;
+}
+
+select.ds-control:hover,
+input[type="date"].ds-control:hover,
+input[type="time"].ds-control:hover,
+textarea.ds-control:hover,
+input[type="text"].ds-control:hover {
+  border-color: #b8d5cf;
+  background-color: #fbfcfd;
+}
+
+select.ds-control:focus,
+input[type="date"].ds-control:focus,
+input[type="time"].ds-control:focus,
+textarea.ds-control:focus,
+input[type="text"].ds-control:focus {
+  border-color: #0e9384;
+  box-shadow: 0 0 0 3px rgba(14, 147, 132, 0.14);
+  background-color: #ffffff;
+}
+
+select.ds-control:disabled,
+input[type="date"].ds-control:disabled,
+input[type="time"].ds-control:disabled,
+textarea.ds-control:disabled,
+input[type="text"].ds-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background-color: #f5f7f8;
+}
+
+input[type="date"].ds-control::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+/*
+ * Time: keep the native 12h field editable (type 09:00 AM).
+ * Only the right-side clock icon opens the picker — not the whole input.
+ */
+input[type="time"].ds-control::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 2.5rem;
+  height: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
+input[type="time"].ds-control::-webkit-datetime-edit {
+  padding: 0;
+  width: calc(100% - 2.5rem);
+}
+
+input[type="time"].ds-control::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+.ds-date-wrap {
+  position: relative;
+  display: inline-flex;
+  min-width: 9.75rem;
+  max-width: 100%;
+}
+
+.ds-date-wrap input[type="date"].ds-control,
+.ds-date-wrap input[type="time"].ds-control {
+  width: 100%;
+}
+
+.ds-select-wrap {
+  position: relative;
+  display: inline-flex;
+  min-width: 8.5rem;
+}
+
+.ds-select-wrap select.ds-control {
+  width: 100%;
+}
+
+/* Custom listbox dropdown surface */
+.ds-listbox {
+  border: 1px solid #dde7eb;
+  border-radius: 0.9rem;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(16, 42, 58, 0.12);
+  padding: 0.35rem;
+}
+
+.ds-listbox-trigger {
+  border: 1px solid #dde7eb;
+  border-radius: 0.875rem;
+  background: #ffffff;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.ds-listbox-trigger:hover {
+  border-color: #b8d5cf;
+  background-color: #fbfcfd;
+}
+
+.ds-listbox-trigger[aria-expanded="true"] {
+  border-color: #0e9384;
+  box-shadow: 0 0 0 3px rgba(14, 147, 132, 0.14);
+}
+
+/* Shared surface polish for existing card patterns — no markup changes required. */
+section.rounded-2xl.border.bg-white,
+article.rounded-2xl.border.bg-white,
+aside.bg-white,
+header.bg-white\/90,
+header.bg-white\/95 {
+  border-color: #e1eaed;
+  box-shadow:
+    0 1px 1px rgba(16, 42, 58, 0.03),
+    0 8px 24px rgba(16, 42, 58, 0.04);
+}
+
+/* Professional data tables — apply className="ds-data-table" on <table>. */
+.ds-data-table {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+  font-size: 0.75rem;
+}
+
+.ds-data-table thead th {
+  padding: 0.7rem 1rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7890a0;
+  background: #f7fafb;
+  border-bottom: 1px solid #eaf0f2;
+  white-space: nowrap;
+}
+
+.ds-data-table tbody td {
+  padding: 0.85rem 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #eef3f5;
+  color: #486170;
+  font-weight: 600;
+}
+
+.ds-data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ds-data-table tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.ds-data-table tbody tr:hover td {
+  background-color: #fbfcfd;
+}
+
+.ds-data-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #eaf0f2;
+  border-radius: 0.875rem;
+  background: #ffffff;
+}
+
+/* Soft inset panel for nested queues / filters. */
+.ds-inset-panel {
+  border: 1px solid #e1eaed;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(16, 42, 58, 0.04);
+}
 
 @keyframes devsync-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .skeleton-shimmer {
-  background: linear-gradient(105deg, #eef3f4 20%, #f8fbfb 38%, #eef3f4 56%);
+  background: linear-gradient(
+    100deg,
+    #eef3f5 0%,
+    #eef3f5 35%,
+    #f7fafb 50%,
+    #eef3f5 65%,
+    #eef3f5 100%
+  );
   background-size: 200% 100%;
-  animation: devsync-shimmer 1.35s linear infinite;
+  animation: devsync-shimmer 1.25s ease-in-out infinite;
+}
+
+@keyframes login-signal {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes login-sweep {
+  0% {
+    transform: translateX(-12%) scaleX(0.92);
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: translateX(12%) scaleX(1.05);
+    opacity: 0.15;
+  }
+}
+
+@keyframes login-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.login-signal {
+  animation: login-signal 5.5s ease-in-out infinite;
+}
+
+.login-sweep {
+  animation: login-sweep 9s ease-in-out infinite;
+}
+
+.login-glow {
+  animation: login-glow 4.5s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .skeleton-shimmer { animation: none; }
+  .login-signal,
+  .login-sweep,
+  .login-glow {
+    animation: none;
+  }
 }

@@ -3,7 +3,9 @@ import { GET } from "../app/login/native/route";
 
 describe("native Firebase sign-in route", () => {
   it("renders a visible retryable error path instead of an unbounded loader", async () => {
-    const response = await GET(new Request("http://localhost/login/native?devAuthTest=error"));
+    const response = await GET(
+      new Request("http://localhost/login/native?devAuthTest=error")
+    );
     const html = await response.text();
 
     expect(response.headers.get("Cache-Control")).toBe("no-store");

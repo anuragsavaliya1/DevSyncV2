@@ -11,6 +11,9 @@ describe("workspace refresh status", () => {
     const timestamp = "2026-08-27T05:30:45.000Z";
 
     expect(getRefreshStatus(timestamp, false)).toContain("Synced");
-    expect(getRefreshStatus(timestamp, true)).toContain("Refreshing · last synced");
+    expect(getRefreshStatus(timestamp, false)).not.toMatch(/GMT|IST|UTC/);
+    expect(getRefreshStatus(timestamp, true)).toContain(
+      "Refreshing · last synced"
+    );
   });
 });

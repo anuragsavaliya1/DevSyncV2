@@ -2,7 +2,12 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { EmployeeDetailSkeleton, RoleManagementSkeleton, TeamStatusSkeleton, WorkspaceSkeleton } from "../components/workspace/loading-skeletons";
+import {
+  EmployeeDetailSkeleton,
+  RoleManagementSkeleton,
+  TeamStatusSkeleton,
+  WorkspaceSkeleton,
+} from "../components/workspace/loading-skeletons";
 
 afterEach(() => cleanup());
 
@@ -12,7 +17,9 @@ describe("loading skeletons", () => {
 
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Loading workspace data…")).toBeInTheDocument();
-    expect(container.querySelectorAll(".skeleton-shimmer").length).toBeGreaterThan(4);
+    expect(
+      container.querySelectorAll(".skeleton-shimmer").length
+    ).toBeGreaterThan(4);
   });
 
   it("renders the role-management placeholder with an accessible loading status", () => {
@@ -26,13 +33,17 @@ describe("loading skeletons", () => {
     const { container } = render(<TeamStatusSkeleton />);
 
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
-    expect(container.querySelectorAll(".skeleton-shimmer").length).toBeGreaterThan(4);
+    expect(
+      container.querySelectorAll(".skeleton-shimmer").length
+    ).toBeGreaterThan(4);
   });
 
   it("renders the employee-detail placeholder with shimmer blocks", () => {
     const { container } = render(<EmployeeDetailSkeleton />);
 
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
-    expect(container.querySelectorAll(".skeleton-shimmer").length).toBeGreaterThan(6);
+    expect(
+      container.querySelectorAll(".skeleton-shimmer").length
+    ).toBeGreaterThan(6);
   });
 });

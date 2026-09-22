@@ -13,7 +13,10 @@ const sessionDurationMs = 1000 * 60 * 60 * 24 * 5;
 export async function POST(request: NextRequest) {
   try {
     const { idToken } = sessionSchema.parse(await request.json());
-    const { decodedToken, sessionCookie } = await createFirebaseSession(idToken, sessionDurationMs);
+    const { decodedToken, sessionCookie } = await createFirebaseSession(
+      idToken,
+      sessionDurationMs
+    );
     const user = await upsertFirebaseUser(decodedToken);
     if (!user.isActive) throw new Error("This DevSync account is inactive.");
 
@@ -27,13 +30,24 @@ export async function POST(request: NextRequest) {
     });
     return response;
   } catch (error) {
-    console.error("[auth.session]", error instanceof Error ? error.message : "Unknown error");
-    return NextResponse.json({ error: "Sign-in could not be verified." }, { status: 401 });
+    console.error(
+      "[auth.session]",
+      error instanceof Error ? error.message : "Unknown error"
+    );
+    return NextResponse.json(
+      { error: "Sign-in could not be verified." },
+      { status: 401 }
+    );
   }
 }
 
 export function DELETE() {
   const response = NextResponse.json({ success: true });
-  response.cookies.set(DEV_SYNC_SESSION_COOKIE, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
+  response.cookies.set(DEV_SYNC_SESSION_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
   return response;
 }

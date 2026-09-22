@@ -10,8 +10,14 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/session", () => ({ getCurrentUser: mocks.getCurrentUser }));
-vi.mock("@/lib/operations", () => ({ completeTask: mocks.completeTask, deleteAssignedTask: mocks.deleteAssignedTask }));
-vi.mock("@/lib/users", () => ({ changeUserActivity: mocks.changeUserActivity, permanentlyDeleteUser: mocks.permanentlyDeleteUser }));
+vi.mock("@/lib/operations", () => ({
+  completeTask: mocks.completeTask,
+  deleteAssignedTask: mocks.deleteAssignedTask,
+}));
+vi.mock("@/lib/users", () => ({
+  changeUserActivity: mocks.changeUserActivity,
+  permanentlyDeleteUser: mocks.permanentlyDeleteUser,
+}));
 
 import { DELETE as archiveTask } from "../app/api/tasks/[taskId]/route";
 import { PATCH as changeActivity } from "../app/api/admin/users/[userId]/activity/route";
@@ -33,7 +39,12 @@ const manager = {
 describe("Admin-only mutation guards", () => {
   it("rejects a Manager task archive before task lookup or archival", async () => {
     mocks.getCurrentUser.mockResolvedValue(manager);
-    const response = await archiveTask(new NextRequest("http://localhost/api/tasks/not-a-real-task", { method: "DELETE" }), { params: Promise.resolve({ taskId: "not-a-real-task" }) });
+    const response = await archiveTask(
+      new NextRequest("http://localhost/api/tasks/not-a-real-task", {
+        method: "DELETE",
+      }),
+      { params: Promise.resolve({ taskId: "not-a-real-task" }) }
+    );
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: "Forbidden" });
@@ -42,7 +53,17 @@ describe("Admin-only mutation guards", () => {
 
   it("rejects a Manager activity change before parsing or writing the target account", async () => {
     mocks.getCurrentUser.mockResolvedValue(manager);
-    const response = await changeActivity(new NextRequest("http://localhost/api/admin/users/not-a-real-user/activity", { method: "PATCH", body: "not-json", headers: { "Content-Type": "application/json" } }), { params: Promise.resolve({ userId: "not-a-real-user" }) });
+    const response = await changeActivity(
+      new NextRequest(
+        "http://localhost/api/admin/users/not-a-real-user/activity",
+        {
+          method: "PATCH",
+          body: "not-json",
+          headers: { "Content-Type": "application/json" },
+        }
+      ),
+      { params: Promise.resolve({ userId: "not-a-real-user" }) }
+    );
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: "Forbidden" });
@@ -51,7 +72,12 @@ describe("Admin-only mutation guards", () => {
 
   it("rejects a Manager permanent employee deletion before the target account is touched", async () => {
     mocks.getCurrentUser.mockResolvedValue(manager);
-    const response = await deleteEmployee(new NextRequest("http://localhost/api/admin/users/not-a-real-user", { method: "DELETE" }), { params: Promise.resolve({ userId: "not-a-real-user" }) });
+    const response = await deleteEmployee(
+      new NextRequest("http://localhost/api/admin/users/not-a-real-user", {
+        method: "DELETE",
+      }),
+      { params: Promise.resolve({ userId: "not-a-real-user" }) }
+    );
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: "Forbidden" });
