@@ -15,6 +15,7 @@ export function useClientPagination<T>(
 ) {
   const [start, setStart] = useState(0);
   const limit = Math.max(1, pageSize);
+  
 
   useEffect(() => {
     setStart(0);
