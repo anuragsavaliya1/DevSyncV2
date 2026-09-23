@@ -129,7 +129,7 @@ describe("punch-out source persistence helpers", () => {
         record: null,
         onLeave: true,
       }),
-    ).toEqual(["Absent", "On Leave"]);
+    ).toEqual(["On Leave"]);
     expect(
       teamAttendanceStatusLabel({
         record: {

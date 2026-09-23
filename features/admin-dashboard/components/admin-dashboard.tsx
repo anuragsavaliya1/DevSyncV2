@@ -12,11 +12,14 @@ import {
 } from "lucide-react";
 import { EmptyState, ErrorState } from "@/components/shared/error-state";
 import { BusyOverlay } from "@/components/shared/action-loader";
+import { TablePagination } from "@/components/shared/table-pagination";
+import { QUERY_CONFIG } from "@/constants/query-config";
 import { AttendanceSkeleton } from "@/features/workspace/components/loading-skeletons";
 import { AdminLeaveCalendar } from "@/features/admin-dashboard/components/leave-calendar";
 import { OverdueTasksPanel } from "@/features/admin-dashboard/components/overdue-tasks-panel";
 import { useAdminDashboard } from "@/features/admin-dashboard/hooks/use-admin-dashboard";
 import { formatDate } from "@/features/workspace/utils/format";
+import { useClientPagination } from "@/hooks/use-client-pagination";
 import { toIndiaMonthKey } from "@/lib/attendance-month";
 import {
   isHalfDayPortion,
@@ -142,6 +145,26 @@ function DashboardStatCard({
   );
 }
 
+function leaveDurationPillClass(dayPortion: AdminDashboardLeaveRow["dayPortion"]) {
+  if (isHourlyLeavePortion(dayPortion)) {
+    return "bg-[#F1F5F9] text-[#475569]";
+  }
+  if (isHalfDayPortion(dayPortion)) {
+    return "bg-[#FFF7ED] text-[#B45309]";
+  }
+  return "bg-[#EEF5FB] text-[#2F6B9A]";
+}
+
+function LeaveDurationPill({ row }: { row: AdminDashboardLeaveRow }) {
+  return (
+    <span
+      className={`inline-flex w-fit rounded-full px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.08em] ${leaveDurationPillClass(row.dayPortion)}`}
+    >
+      {row.durationLabel}
+    </span>
+  );
+}
+
 function LeaveTable({
   rows,
   mode,
@@ -157,6 +180,8 @@ function LeaveTable({
   emptyDetail: string;
   onReview?: (row: AdminDashboardLeaveRow) => void;
 }) {
+  const page = useClientPagination(rows, QUERY_CONFIG.listPageSize, mode);
+
   if (!rows.length) {
     return (
       <EmptyState icon={CalendarDays} title={emptyTitle} detail={emptyDetail} />
@@ -175,6 +200,12 @@ function LeaveTable({
                 <th>Date</th>
                 <th>Duration</th>
               </>
+            ) : mode === "pending" ? (
+              <>
+                <th>From</th>
+                <th>To</th>
+                <th>Duration</th>
+              </>
             ) : (
               <>
                 <th>From</th>
@@ -188,7 +219,7 @@ function LeaveTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map(row => (
+          {page.pageItems.map(row => (
             <tr key={row.id}>
               <td className="font-semibold text-[#173247]">
                 {row.employeeName}
@@ -197,7 +228,17 @@ function LeaveTable({
               {mode === "today" ? (
                 <>
                   <td>{formatDate(todayDate || row.startDate)}</td>
-                  <td>{row.durationLabel}</td>
+                  <td>
+                    <LeaveDurationPill row={row} />
+                  </td>
+                </>
+              ) : mode === "pending" ? (
+                <>
+                  <td>{formatDate(row.startDate)}</td>
+                  <td>{formatDate(row.endDate)}</td>
+                  <td>
+                    <LeaveDurationPill row={row} />
+                  </td>
                 </>
               ) : (
                 <>
@@ -252,6 +293,7 @@ function LeaveTable({
           ))}
         </tbody>
       </table>
+      <TablePagination {...page.paginationProps} />
     </div>
   );
 }
@@ -362,7 +404,8 @@ export function AdminDashboardModule({
         </div>
         <p className="mt-3 flex items-center gap-2 text-[11px] font-medium text-[#8B9BA6]">
           <ClipboardList className="h-3.5 w-3.5" />
-          Approved leave today overrides Not Punched In for those employees.
+          Half-day or hourly leave with punch-in counts as Present; full leave
+          without punch-in counts as On leave.
         </p>
       </SectionCard>
 

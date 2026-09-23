@@ -180,9 +180,10 @@ export function leavesCoveringDate(
 }
 
 /**
- * Attendance summary with approved leave as an override:
- * on-leave employees are not counted as present or not-punched-in.
- * Present/punched counts are scoped to activeUserIds only.
+ * Attendance summary aligned with Team Attendance:
+ * - Punch-in counts as Present (including half-day / hourly leave).
+ * - On Leave only when approved leave covers today and they have not punched in.
+ * - Not punched-in excludes both Present and On Leave.
  */
 export function summarizeAdminAttendance(input: {
   activeUserIds: string[];
@@ -190,12 +191,12 @@ export function summarizeAdminAttendance(input: {
   onLeaveUserIds: string[];
 }): AdminDashboardSummary {
   const active = new Set(input.activeUserIds);
-  const onLeave = new Set(
-    input.onLeaveUserIds.filter((userId) => active.has(userId)),
-  );
   const present = new Set(
-    input.punchedInUserIds.filter(
-      (userId) => active.has(userId) && !onLeave.has(userId),
+    input.punchedInUserIds.filter((userId) => active.has(userId)),
+  );
+  const onLeave = new Set(
+    input.onLeaveUserIds.filter(
+      (userId) => active.has(userId) && !present.has(userId),
     ),
   );
   const notPunchedIn = input.activeUserIds.filter(

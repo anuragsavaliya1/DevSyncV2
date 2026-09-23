@@ -16,7 +16,11 @@ import {
 } from "lucide-react";
 import { BusyOverlay } from "@/components/shared/action-loader";
 import { useAssignTask } from "@/features/tasks/hooks/use-tasks";
+import { TablePagination } from "@/components/shared/table-pagination";
 import { ThemedSelect } from "@/components/shared/themed-select";
+import { useTeamUpdatesPage } from "@/features/team/hooks/use-team";
+import { useAdminUsersPage } from "@/features/users/hooks/use-users";
+import { useListPagination } from "@/hooks/use-list-pagination";
 import { previousDateKey } from "@/lib/operation-rules";
 import {
   TASK_PRIORITIES,
@@ -72,7 +76,7 @@ const TEAM_ACTIVITY_OPTIONS = [
 type TeamActivityFilter = (typeof TEAM_ACTIVITY_OPTIONS)[number]["value"];
 
 export function TeamStatusCanvas({
-  members,
+  members: assigneeMembers,
   businessDate,
   workDate,
   setWorkDate,
@@ -91,6 +95,18 @@ export function TeamStatusCanvas({
   onAssigned: () => void;
 }) {
   const [view, setView] = useState<"list" | "grid">("list");
+  const listPage = useListPagination(`${workDate}:${activityFilter}:${view}`);
+  const teamPageQuery = useTeamUpdatesPage(
+    workDate,
+    true,
+    activityFilter,
+    listPage.pageQuery,
+  );
+  const members = teamPageQuery.data?.page.items ?? [];
+  const membersTotal = teamPageQuery.data?.page.total ?? 0;
+  const submitted =
+    teamPageQuery.data?.summary.submitted ??
+    assigneeMembers.filter(member => member.update).length;
   const [developerUserId, setDeveloperUserId] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<(typeof TASK_PRIORITIES)[number]>(
@@ -108,8 +124,7 @@ export function TeamStatusCanvas({
   const yesterdayKey = previousDateKey(businessDate);
   const isTodaySelected = workDate === businessDate;
   const isYesterdaySelected = workDate === yesterdayKey;
-  const submitted = members.filter(member => member.update).length;
-  const assigneeOptions = members.filter(
+  const assigneeOptions = assigneeMembers.filter(
     member => member.user.isActive && member.user.role !== "admin"
   );
 
@@ -483,6 +498,7 @@ export function TeamStatusCanvas({
               </div>
             ))}
           </div>
+          <TablePagination {...listPage.paginationProps(membersTotal)} />
         </section>
       ) : (
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -540,6 +556,9 @@ export function TeamStatusCanvas({
               </button>
             </article>
           ))}
+          <div className="md:col-span-2 xl:col-span-3 overflow-hidden rounded-2xl border border-[#E1EAED] bg-white">
+            <TablePagination {...listPage.paginationProps(membersTotal)} />
+          </div>
         </section>
       )}
     </div>
@@ -547,7 +566,7 @@ export function TeamStatusCanvas({
 }
 
 export function AccessControlPanel({
-  users,
+  users: usersProp,
   selfId,
   initialAdminEmail,
   isBusy,
@@ -555,7 +574,7 @@ export function AccessControlPanel({
   onChangeActivity,
   onDelete,
 }: {
-  users: User[];
+  users?: User[];
   selfId: string;
   initialAdminEmail: string;
   isBusy: boolean;
@@ -563,6 +582,10 @@ export function AccessControlPanel({
   onChangeActivity: (id: string, isActive: boolean) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
 }) {
+  const listPage = useListPagination("users");
+  const usersQuery = useAdminUsersPage(listPage.pageQuery, !usersProp);
+  const users = usersProp ?? usersQuery.data?.items ?? [];
+  const usersTotal = usersProp?.length ?? usersQuery.data?.total ?? 0;
   const [target, setTarget] = useState<User | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isMessageError, setIsMessageError] = useState(false);
@@ -570,6 +593,7 @@ export function AccessControlPanel({
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+
   async function confirmActivityChange() {
     if (!target) return;
     setIsChangingActivity(true);
@@ -621,7 +645,19 @@ export function AccessControlPanel({
       setIsDeleting(false);
     }
   }
-  const panelBusy = isBusy || isChangingActivity || isDeleting;
+  const panelBusy =
+    isBusy ||
+    isChangingActivity ||
+    isDeleting ||
+    (usersQuery.isFetching && Boolean(usersQuery.data));
+
+  if (!usersProp && usersQuery.isLoading && !usersQuery.data) {
+    return (
+      <section className="relative overflow-hidden rounded-2xl border border-[#E1EAED] bg-white p-6 shadow-sm">
+        <p className="text-xs font-semibold text-[#8294A0]">Loading users…</p>
+      </section>
+    );
+  }
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-[#E1EAED] bg-white shadow-sm">
@@ -749,6 +785,7 @@ export function AccessControlPanel({
               );
             })}
           </div>
+          <TablePagination {...listPage.paginationProps(usersTotal)} />
         </div>
       ) : (
         <div className="p-6 text-center text-xs font-semibold text-[#8294A0]">

@@ -8,7 +8,6 @@ export async function invalidateWorkspaceCore(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: queryKeys.workUpdates.all }),
     queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all }),
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.infinite }),
   ]);
 }
 
@@ -52,14 +51,9 @@ export async function invalidateTasks(queryClient: QueryClient) {
 }
 
 export async function invalidateNotifications(queryClient: QueryClient) {
-  await Promise.all([
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.notifications.all,
-    }),
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.notifications.infinite,
-    }),
-  ]);
+  await queryClient.invalidateQueries({
+    queryKey: queryKeys.notifications.all,
+  });
 }
 
 export async function invalidateTeam(queryClient: QueryClient) {

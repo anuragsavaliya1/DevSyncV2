@@ -15,6 +15,7 @@ import {
   updateAttendanceReportEntry,
   type AttendanceReportQueryInput,
 } from "@/features/attendance-reports/api/attendance-reports-api";
+import type { ListPageQuery } from "@/lib/pagination";
 import { invalidateAttendanceReports } from "@/lib/query/invalidate";
 import type {
   CreateAttendanceReportEntryInput,
@@ -22,24 +23,31 @@ import type {
 } from "@/types/api.types";
 
 export function useAttendanceReport(
-  query: AttendanceReportQueryInput | null,
+  query: (AttendanceReportQueryInput & { page?: ListPageQuery | null }) | null,
   enabled = true,
 ) {
   const fromMonth = query?.fromMonth || query?.month || "";
   const toMonth = query?.toMonth || fromMonth;
   const employeeId = query?.employeeId?.trim() || null;
+  const action = query?.action?.trim() || null;
+  const page = query?.page ?? null;
 
   return useQuery({
     queryKey: queryKeys.attendanceReports.query({
       fromMonth,
       toMonth,
       employeeId,
+      action,
+      start: page?.start,
+      limit: page?.limit,
     }),
     queryFn: () =>
       getAttendanceReport({
         fromMonth,
         toMonth,
         employeeId,
+        action,
+        page,
       }),
     enabled: enabled && Boolean(fromMonth && toMonth),
     placeholderData: (previous) => previous,

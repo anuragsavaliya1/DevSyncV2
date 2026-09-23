@@ -62,6 +62,7 @@ describe("team attendance punch-out audit", () => {
           },
         },
         onLeave: false,
+        leave: null,
       },
       {
         user: {
@@ -85,6 +86,7 @@ describe("team attendance punch-out audit", () => {
           },
         },
         onLeave: false,
+        leave: null,
       },
     ]);
 
@@ -125,6 +127,7 @@ describe("team attendance punch-out audit", () => {
           },
         },
         onLeave: false,
+        leave: null,
       },
     ]);
     const response = await teamAttendance(

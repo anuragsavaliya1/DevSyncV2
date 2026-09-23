@@ -2,6 +2,9 @@
 
 import { ListTodo } from "lucide-react";
 import { EmptyState } from "@/components/shared/error-state";
+import { TablePagination } from "@/components/shared/table-pagination";
+import { QUERY_CONFIG } from "@/constants/query-config";
+import { useClientPagination } from "@/hooks/use-client-pagination";
 import type { AdminDashboardOverdueTaskRow } from "@/types/api.types";
 
 function priorityTone(priority: AdminDashboardOverdueTaskRow["priority"]) {
@@ -24,6 +27,8 @@ export function OverdueTasksPanel({
   rows: AdminDashboardOverdueTaskRow[];
   onOpenEmployee?: (employeeId: string) => void;
 }) {
+  const page = useClientPagination(rows, QUERY_CONFIG.listPageSize);
+
   return (
     <section className="overflow-hidden rounded-2xl border border-[#E1EAED] bg-white shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#EAF0F2] bg-gradient-to-b from-[#FBFCFD] to-white px-4 py-4 sm:px-5">
@@ -61,7 +66,7 @@ export function OverdueTasksPanel({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {page.pageItems.map((row) => (
                   <tr key={row.id}>
                     <td>
                       {onOpenEmployee ? (
@@ -100,6 +105,7 @@ export function OverdueTasksPanel({
                 ))}
               </tbody>
             </table>
+            <TablePagination {...page.paginationProps} />
           </div>
         )}
       </div>

@@ -11,6 +11,7 @@ import {
   punchIn,
   punchOut,
 } from "@/lib/operations";
+import { listResponseWithOptionalPaging } from "@/lib/pagination";
 import { getCurrentUser } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -42,9 +43,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const workDate = search.get("workDate") || indiaDateKey();
     if (search.get("team") === "true")
-      return NextResponse.json({
-        attendance: await listAttendance({ workDate }),
-      });
+      return NextResponse.json(
+        listResponseWithOptionalPaging(
+          "attendance",
+          await listAttendance({ workDate }),
+          search,
+        ),
+      );
     return NextResponse.json({
       attendance: await getAttendanceWithAudit(requestedUserId, workDate),
     });

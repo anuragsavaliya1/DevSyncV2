@@ -1,4 +1,9 @@
 import { apiRequest } from "@/lib/api/api-client";
+import {
+  appendListPageParams,
+  normalizePaginatedList,
+  type ListPageQuery,
+} from "@/lib/pagination";
 import type {
   AttendanceRecord,
   CreatePunchOutCorrectionRequestInput,
@@ -24,13 +29,25 @@ export async function getMyPunchOutCorrectionRequests(workDate?: string) {
   );
 }
 
-export async function getPendingPunchOutCorrectionRequests(workDate?: string) {
+export async function getPendingPunchOutCorrectionRequests(
+  workDate?: string,
+  page?: ListPageQuery | null,
+) {
   const params = new URLSearchParams();
   if (workDate) params.set("workDate", workDate);
+  appendListPageParams(params, page);
   const query = params.toString();
-  return apiRequest<{ requests: PunchOutCorrectionRequest[] }>(
-    `/api/attendance/punch-out-requests${query ? `?${query}` : ""}`,
-  );
+  const data = await apiRequest<{
+    requests: PunchOutCorrectionRequest[];
+    total?: number;
+    start?: number;
+    limit?: number;
+  }>(`/api/attendance/punch-out-requests${query ? `?${query}` : ""}`);
+  if (!page) return { requests: data.requests };
+  return {
+    requests: data.requests,
+    page: normalizePaginatedList(data.requests, data, page),
+  };
 }
 
 export async function approvePunchOutCorrectionRequest(requestId: string) {

@@ -98,7 +98,11 @@ export function teamAttendanceStatusLayers(input: {
     return { primary: ["Correction requested"], arrival: null, leave };
   }
   const record = input.record;
-  if (!record) return { primary: ["Absent"], arrival: null, leave };
+  if (!record) {
+    return input.onLeave
+      ? { primary: ["On Leave"], arrival: null, leave: null }
+      : { primary: ["Absent"], arrival: null, leave: null };
+  }
   if (record.punchOutAt && !record.punchInAt) {
     return { primary: ["Missing in"], arrival: null, leave };
   }

@@ -12,6 +12,8 @@ import {
   X,
 } from "lucide-react";
 import { BusyOverlay } from "@/components/shared/action-loader";
+import { TablePagination } from "@/components/shared/table-pagination";
+import { QUERY_CONFIG } from "@/constants/query-config";
 import { useAttendanceMonth } from "@/features/attendance/hooks/use-attendance";
 import { useCreatePunchOutCorrectionRequest } from "@/features/attendance/hooks/use-punch-out-corrections";
 import { MetricCard } from "@/features/workspace/components/metric-card";
@@ -21,6 +23,7 @@ import {
   formatDateTime,
   formatTime,
 } from "@/features/workspace/utils/format";
+import { useClientPagination } from "@/hooks/use-client-pagination";
 import {
   buildCalendarGrid,
   formatHoursShort,
@@ -32,8 +35,7 @@ import {
   toIndiaMonthKey,
 } from "@/lib/attendance-month";
 import {
-  isPartialDayLeavePortion,
-  leaveDayPortionLabel,
+  leaveCoverageSummary,
 } from "@/lib/leave-rules";
 import type {
   AttendanceCorrectionType,
@@ -158,17 +160,18 @@ function listDateSubtext(dateKey: string, today: string, monthKey: string) {
 /** Caption for approved leave on calendar/list (full, half, or hourly). */
 function approvedLeaveCaption(day: AttendanceDay) {
   if (day.leaveInfo?.status !== "approved") return null;
-  if (isPartialDayLeavePortion(day.leaveInfo.dayPortion)) {
-    return `${leaveDayPortionLabel(day.leaveInfo.dayPortion)} leave`;
-  }
-  return "Approved leave";
+  return leaveCoverageSummary({
+    dayPortion: day.leaveInfo.dayPortion,
+    leaveType: day.leaveInfo.leaveType,
+  });
 }
 
 function approvedLeaveDetail(day: AttendanceDay) {
   if (day.leaveInfo?.status !== "approved") return null;
-  const statusLine = isPartialDayLeavePortion(day.leaveInfo.dayPortion)
-    ? `Approved ${leaveDayPortionLabel(day.leaveInfo.dayPortion).toLowerCase()} leave`
-    : "Approved leave";
+  const statusLine = leaveCoverageSummary({
+    dayPortion: day.leaveInfo.dayPortion,
+    leaveType: day.leaveInfo.leaveType,
+  });
   const reason = day.leaveInfo.reason?.trim() || null;
   const attendanceNote =
     day.status !== "leave" && day.punchInAt
@@ -320,6 +323,7 @@ function CorrectionRequestDialog({
 }) {
   const createMutation = useCreatePunchOutCorrectionRequest();
   const isEditBoth = Boolean(day?.punchInAt && day?.punchOutAt);
+  const hasPunchInOnly = Boolean(day?.punchInAt && !day?.punchOutAt);
   const [punchInTime, setPunchInTime] = useState(() =>
     timeValueFromIso(day?.punchInAt) || "09:05",
   );
@@ -327,7 +331,7 @@ function CorrectionRequestDialog({
     timeValueFromIso(day?.punchOutAt),
   );
   const [includePunchOut, setIncludePunchOut] = useState(
-    mode === "report_attendance" || isEditBoth,
+    mode === "report_attendance" || isEditBoth || hasPunchInOnly,
   );
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -339,12 +343,22 @@ function CorrectionRequestDialog({
         ? "Punch-in correction"
         : isEditBoth
           ? "Edit attendance"
-          : "Report attendance";
+          : hasPunchInOnly
+            ? "Correct punch-in"
+            : "Report attendance";
 
   async function submit() {
     setError(null);
     if (!reason.trim()) {
       setError("A reason is required.");
+      return;
+    }
+    if (
+      mode === "report_attendance" &&
+      (isEditBoth || includePunchOut) &&
+      !punchOutTime
+    ) {
+      setError("Requested punch-out time is required.");
       return;
     }
     try {
@@ -468,7 +482,9 @@ function CorrectionRequestDialog({
                       <input
                         type="checkbox"
                         checked={includePunchOut}
-                        onChange={(event) => setIncludePunchOut(event.target.checked)}
+                        onChange={(event) =>
+                          setIncludePunchOut(event.target.checked)
+                        }
                         className="h-3.5 w-3.5 accent-[#0E9384]"
                       />
                       Also add punch-out
@@ -562,9 +578,9 @@ function DayDetailDialog({
     day.status === "missing_punch_in" &&
     day.correctionRequest?.status !== "pending";
   const canReport =
-    day.status === "absent" &&
+    (day.status === "absent" || day.status === "working") &&
     day.correctionRequest?.status !== "pending" &&
-    day.date < toIndiaDateKey();
+    day.date <= toIndiaDateKey();
   const canEditBoth =
     Boolean(day.punchInAt && day.punchOutAt) &&
     day.status !== "weekend" &&
@@ -921,13 +937,13 @@ function DayCard({
           {day.holidayInfo?.name || "Company holiday"}
         </p>
       ) : day.status === "leave" ? (
-        <div className="mt-auto flex flex-1 flex-col items-center justify-center gap-1 px-0.5 pt-2 text-center">
+        <div className="mt-auto flex flex-1 flex-col items-center justify-center gap-0.5 px-0.5 pt-2 text-center">
           <p className="text-[10px] font-extrabold leading-4 text-[#2F6B9A]">
             {leaveCaption ?? "Approved leave"}
           </p>
           {day.leaveInfo?.reason ? (
             <p
-              className="line-clamp-3 text-[10px] font-semibold leading-4 text-[#3D6B8E]"
+              className="line-clamp-2 text-[9px] font-semibold leading-3.5 text-[#3D6B8E]"
               title={day.leaveInfo.reason}
             >
               {day.leaveInfo.reason}
@@ -1044,16 +1060,26 @@ function MonthBody({
     return map;
   }, [ledger.days]);
 
+  const listRows = useMemo(
+    () =>
+      [...ledger.days]
+        .filter(
+          (day) =>
+            day.date <= today ||
+            day.status === "holiday" ||
+            day.status === "leave" ||
+            (day.status === "weekend" && day.holidayInfo?.kind === "weekoff"),
+        )
+        .reverse(),
+    [ledger.days, today],
+  );
+  const listPage = useClientPagination(
+    listRows,
+    QUERY_CONFIG.listPageSize,
+    `${ledger.month}:list`,
+  );
+
   if (view === "list") {
-    const rows = [...ledger.days]
-      .filter(
-        (day) =>
-          day.date <= today ||
-          day.status === "holiday" ||
-          day.status === "leave" ||
-          (day.status === "weekend" && day.holidayInfo?.kind === "weekoff"),
-      )
-      .reverse();
     return (
       <div className="overflow-x-auto">
         <div className="min-w-[640px]">
@@ -1064,7 +1090,7 @@ function MonthBody({
             <span>Punch out</span>
           </div>
           <div className="divide-y divide-[#EEF3F5]">
-            {rows.map((day) => {
+            {listPage.pageItems.map((day) => {
               const isToday = day.date === today;
               const interactive =
                 day.status !== "weekend" &&
@@ -1098,14 +1124,25 @@ function MonthBody({
                     <p className="text-sm font-extrabold text-[#102A3A]">
                       {formatDate(day.date)}
                     </p>
-                    <p className="mt-0.5 text-[11px] font-medium text-[#8494A0]">
+                    <p
+                      className="mt-0.5 truncate text-[11px] font-medium text-[#8494A0]"
+                      title={
+                        leaveCaption
+                          ? [leaveCaption, day.leaveInfo?.reason]
+                              .filter(Boolean)
+                              .join(" — ")
+                          : undefined
+                      }
+                    >
                       {day.status === "holiday" && day.holidayInfo?.name
                         ? day.holidayInfo.name
                         : day.status === "weekend" &&
                             day.holidayInfo?.kind === "weekoff"
                           ? day.holidayInfo.name || "Week off"
                           : leaveCaption
-                            ? leaveCaption
+                            ? day.leaveInfo?.reason
+                              ? `${leaveCaption} · ${day.leaveInfo.reason}`
+                              : leaveCaption
                             : listDateSubtext(day.date, today, ledger.month)}
                     </p>
                   </div>
@@ -1122,6 +1159,7 @@ function MonthBody({
               );
             })}
           </div>
+          <TablePagination {...listPage.paginationProps} />
         </div>
       </div>
     );

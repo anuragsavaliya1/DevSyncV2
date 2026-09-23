@@ -89,6 +89,13 @@ export function leaveTypeLabel(type: LeaveType) {
   return "Other";
 }
 
+/** Short leave-type label for compact chips (team table / calendar). */
+export function leaveTypeShortLabel(type: LeaveType) {
+  if (type === "casual") return "Casual";
+  if (type === "sick") return "Sick";
+  return "Other";
+}
+
 export function leaveDayPortionLabel(portion: LeaveDayPortion) {
   if (portion === "first_half") return "1st Half";
   if (portion === "second_half") return "2nd Half";
@@ -97,6 +104,23 @@ export function leaveDayPortionLabel(portion: LeaveDayPortion) {
   if (portion === "hours_2") return "2 Hours";
   if (portion === "hours_3") return "3 Hours";
   return "Full Day";
+}
+
+/** Compact one-line leave summary: "1st Half · Casual", "Full Day · Sick". */
+export function leaveCoverageSummary(input: {
+  dayPortion: LeaveDayPortion | string | null | undefined;
+  leaveType: LeaveType | string | null | undefined;
+}) {
+  const portion = leaveDayPortionLabel(
+    normalizeLeaveDayPortion(input.dayPortion),
+  );
+  const type =
+    input.leaveType === "casual" ||
+    input.leaveType === "sick" ||
+    input.leaveType === "other"
+      ? leaveTypeShortLabel(input.leaveType)
+      : "Leave";
+  return `${portion} · ${type}`;
 }
 
 export function validateLeaveReason(reason: string) {

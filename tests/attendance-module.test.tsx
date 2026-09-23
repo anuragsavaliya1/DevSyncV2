@@ -7,11 +7,15 @@ import type { WorkspaceUser } from "@/types/api.types";
 
 const mockUseAttendanceMonth = vi.fn();
 const mockUseTeamAttendance = vi.fn();
+const mockUseTeamAttendancePage = vi.fn();
 const mockUsePendingPunchOutCorrectionRequests = vi.fn();
+const mockUsePendingPunchOutCorrectionRequestsPage = vi.fn();
 
 vi.mock("@/features/attendance/hooks/use-attendance", () => ({
   useAttendanceMonth: (...args: unknown[]) => mockUseAttendanceMonth(...args),
   useTeamAttendance: (...args: unknown[]) => mockUseTeamAttendance(...args),
+  useTeamAttendancePage: (...args: unknown[]) =>
+    mockUseTeamAttendancePage(...args),
   useAttendance: vi.fn(),
   usePunch: () => ({ mutate: vi.fn(), isPending: false }),
 }));
@@ -19,6 +23,8 @@ vi.mock("@/features/attendance/hooks/use-attendance", () => ({
 vi.mock("@/features/attendance/hooks/use-punch-out-corrections", () => ({
   usePendingPunchOutCorrectionRequests: (...args: unknown[]) =>
     mockUsePendingPunchOutCorrectionRequests(...args),
+  usePendingPunchOutCorrectionRequestsPage: (...args: unknown[]) =>
+    mockUsePendingPunchOutCorrectionRequestsPage(...args),
   useCreatePunchOutCorrectionRequest: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -98,8 +104,24 @@ describe("AttendanceModule role behavior", () => {
       error: null,
     });
 
+    mockUseTeamAttendancePage.mockReturnValue({
+      data: {
+        page: { items: [], total: 0, start: 0, limit: 10 },
+        summary: { present: 0, onLeave: 0, absent: 0, total: 0 },
+      },
+      isLoading: false,
+      isFetching: false,
+      error: null,
+    });
+
     mockUsePendingPunchOutCorrectionRequests.mockReturnValue({
       data: [],
+      isLoading: false,
+      error: null,
+    });
+
+    mockUsePendingPunchOutCorrectionRequestsPage.mockReturnValue({
+      data: { items: [], total: 0, start: 0, limit: 10 },
       isLoading: false,
       error: null,
     });
@@ -163,7 +185,7 @@ describe("AttendanceModule role behavior", () => {
       expect(screen.getByText("Team attendance")).toBeInTheDocument();
 
       // Team attendance query should be called
-      expect(mockUseTeamAttendance).toHaveBeenCalled();
+      expect(mockUseTeamAttendancePage).toHaveBeenCalled();
       // Self attendance query should not be called because SelfAttendanceLedger was never mounted
       expect(mockUseAttendanceMonth).not.toHaveBeenCalled();
     });
@@ -204,7 +226,7 @@ describe("AttendanceModule role behavior", () => {
 
       // Self Attendance Ledger is unmounted initially
       expect(mockUseAttendanceMonth).not.toHaveBeenCalled();
-      expect(mockUseTeamAttendance).toHaveBeenCalled();
+      expect(mockUseTeamAttendancePage).toHaveBeenCalled();
     });
 
     it("switches to Self review, showing manager's own attendance with NO user dropdown, and unmounts Team attendance", () => {

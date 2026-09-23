@@ -266,13 +266,15 @@ export function NotificationDrawer({
   onClose,
   onMarkRead,
   viewerRole,
+  viewerUserId,
 }: {
   onClose: () => void;
   onMarkRead: (id?: string) => void | Promise<void>;
   viewerRole: Role;
+  viewerUserId: string;
 }) {
   const router = useRouter();
-  const listQuery = useInfiniteNotifications(true);
+  const listQuery = useInfiniteNotifications(viewerUserId, true);
   const deleteMutation = useDeleteNotification();
   const clearAllMutation = useClearAllNotifications();
   const [markingAll, setMarkingAll] = useState(false);

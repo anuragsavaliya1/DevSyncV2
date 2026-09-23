@@ -1,8 +1,36 @@
 import { apiRequest } from "@/lib/api/api-client";
+import {
+  appendListPageParams,
+  normalizePaginatedList,
+  type ListPageQuery,
+} from "@/lib/pagination";
 import type { CompanyHoliday, CreateHolidayInput } from "@/types/api.types";
 
-export async function listHolidays() {
-  return apiRequest<{ holidays: CompanyHoliday[] }>("/api/holidays");
+export type HolidaysListFilters = {
+  range?: "upcoming" | "past" | "all";
+  asOf?: string;
+  page?: ListPageQuery | null;
+};
+
+export async function listHolidays(filters?: HolidaysListFilters) {
+  const params = new URLSearchParams();
+  if (filters?.range && filters.range !== "all") {
+    params.set("range", filters.range);
+  }
+  if (filters?.asOf) params.set("asOf", filters.asOf);
+  appendListPageParams(params, filters?.page);
+  const query = params.toString();
+  const data = await apiRequest<{
+    holidays: CompanyHoliday[];
+    total?: number;
+    start?: number;
+    limit?: number;
+  }>(`/api/holidays${query ? `?${query}` : ""}`);
+  if (!filters?.page) return { holidays: data.holidays };
+  return {
+    holidays: data.holidays,
+    page: normalizePaginatedList(data.holidays, data, filters.page),
+  };
 }
 
 export async function createHoliday(input: CreateHolidayInput) {

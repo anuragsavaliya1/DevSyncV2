@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAttendanceTrackedRole } from "@/lib/auth/permissions";
 import { indiaDateKey, listWorkUpdates } from "@/lib/operations";
+import { listResponseWithOptionalPaging } from "@/lib/pagination";
 import { getCurrentUser } from "@/lib/session";
 import { listUsers } from "@/lib/users";
 
@@ -33,17 +34,27 @@ export async function GET(request: NextRequest) {
     const updatesByUserId = new Map(
       updates.map(update => [update.userId, update])
     );
+    const members = users
+      .filter(user => {
+        if (!isAttendanceTrackedRole(user.role)) return false;
+        if (activity === "active") return user.isActive;
+        if (activity === "inactive") return !user.isActive;
+        return true;
+      })
+      .map(user => ({ user, update: updatesByUserId.get(user.id) || null }));
+    const summary = {
+      submitted: members.filter((member) => member.update).length,
+      total: members.length,
+    };
     return NextResponse.json({
       workDate,
       activity,
-      members: users
-        .filter(user => {
-          if (!isAttendanceTrackedRole(user.role)) return false;
-          if (activity === "active") return user.isActive;
-          if (activity === "inactive") return !user.isActive;
-          return true;
-        })
-        .map(user => ({ user, update: updatesByUserId.get(user.id) || null })),
+      summary,
+      ...listResponseWithOptionalPaging(
+        "members",
+        members,
+        request.nextUrl.searchParams,
+      ),
     });
   } catch {
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });

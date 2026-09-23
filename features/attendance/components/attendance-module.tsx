@@ -11,12 +11,16 @@ import {
   X,
 } from "lucide-react";
 import { BusyOverlay } from "@/components/shared/action-loader";
+import { TablePagination } from "@/components/shared/table-pagination";
 import { ThemedSelect } from "@/components/shared/themed-select";
-import { useTeamAttendance } from "@/features/attendance/hooks/use-attendance";
+import {
+  useTeamAttendancePage,
+} from "@/features/attendance/hooks/use-attendance";
 import {
   useApprovePunchOutCorrectionRequest,
   useManualPunchOutEmployee,
   usePendingPunchOutCorrectionRequests,
+  usePendingPunchOutCorrectionRequestsPage,
   useRejectPunchOutCorrectionRequest,
 } from "@/features/attendance/hooks/use-punch-out-corrections";
 import { SelfAttendanceLedger } from "@/features/attendance/components/self-attendance-ledger";
@@ -27,6 +31,7 @@ import {
   formatTime,
   initials,
 } from "@/features/workspace/utils/format";
+import { useListPagination } from "@/hooks/use-list-pagination";
 import {
   isManagedPunchInSource,
   isManagedPunchOutSource,
@@ -37,8 +42,9 @@ import {
   teamAttendanceStatusTagClass,
   type TeamAttendanceStatusTag,
 } from "@/lib/punch-out-audit";
-import type {
-  AttendanceCorrectionType,
+import { leaveCoverageSummary } from "@/lib/leave-rules";
+import type { TeamAttendanceLeaveInfo } from "@/features/attendance/api/attendance-api";
+import type {  AttendanceCorrectionType,
   AttendanceRecord,
   PunchOutAudit,
   PunchOutCorrectionRequest,
@@ -749,6 +755,33 @@ function TeamStatusPills({
   );
 }
 
+function TeamLeaveCell({ leave }: { leave: TeamAttendanceLeaveInfo | null }) {
+  if (!leave) {
+    return (
+      <span className="my-auto text-left text-xs font-semibold text-[#9AA8B2]">
+        —
+      </span>
+    );
+  }
+  const summary = leaveCoverageSummary({
+    dayPortion: leave.dayPortion,
+    leaveType: leave.leaveType,
+  });
+  const title = [summary, leave.reason].filter(Boolean).join(" — ");
+  return (
+    <div className="my-auto min-w-0 text-left" title={title}>
+      <p className="truncate text-[10px] font-extrabold leading-4 text-[#2F6B9A]">
+        {summary}
+      </p>
+      {leave.reason ? (
+        <p className="truncate text-[10px] font-medium leading-4 text-[#5A7A94]">
+          {leave.reason}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 const TEAM_ACTIVITY_OPTIONS = [
   { value: "all", label: "All" },
   { value: "active", label: "Active" },
@@ -761,8 +794,20 @@ export function TeamAttendanceView({ businessDate }: { businessDate: string }) {
   const [workDate, setWorkDate] = useState(businessDate);
   const [activityFilter, setActivityFilter] =
     useState<TeamActivityFilter>("active");
-  const teamAttendance = useTeamAttendance(workDate, true, activityFilter);
+  const teamListPage = useListPagination(`${workDate}:${activityFilter}`);
+  const correctionsListPage = useListPagination("corrections");
+  const teamAttendance = useTeamAttendancePage(
+    workDate,
+    true,
+    activityFilter,
+    teamListPage.pageQuery,
+  );
   const pendingRequests = usePendingPunchOutCorrectionRequests(undefined, true);
+  const pendingPageQuery = usePendingPunchOutCorrectionRequestsPage(
+    undefined,
+    correctionsListPage.pageQuery,
+    true,
+  );
   const [reviewRequest, setReviewRequest] =
     useState<PunchOutCorrectionRequest | null>(null);
   const [manualTarget, setManualTarget] = useState<WorkspaceUser | null>(null);
@@ -793,19 +838,20 @@ export function TeamAttendanceView({ businessDate }: { businessDate: string }) {
     return map;
   }, [pendingForDate]);
 
-  const pendingCorrections = pendingRequests.data ?? [];
+  const pendingCorrections = pendingPageQuery.data?.items ?? [];
+  const pendingTotal =
+    pendingPageQuery.data?.total ?? pendingRequests.data?.length ?? 0;
 
-  const rows = teamAttendance.data ?? [];
+  const rows = teamAttendance.data?.page.items ?? [];
+  const summary = teamAttendance.data?.summary;
   const loading = teamAttendance.isLoading && !teamAttendance.data;
   const switchingDate =
     teamAttendance.isFetching && Boolean(teamAttendance.data);
   const error =
     teamAttendance.error instanceof Error ? teamAttendance.error.message : null;
-  const present = rows.filter(row => row.attendance?.punchInAt).length;
-  const onLeaveCount = rows.filter(row => row.onLeave).length;
-  const absent = rows.filter(
-    row => !row.attendance?.punchInAt && !row.onLeave
-  ).length;
+  const present = summary?.present ?? 0;
+  const onLeaveCount = summary?.onLeave ?? 0;
+  const absent = summary?.absent ?? 0;
 
   if (loading) return <AttendanceSkeleton />;
 
@@ -826,13 +872,13 @@ export function TeamAttendanceView({ businessDate }: { businessDate: string }) {
                   Pending review queue
                 </h3>
                 <span className="inline-flex items-center rounded-full bg-[#FFF5E7] px-2 py-0.5 text-[10px] font-extrabold text-[#A87532]">
-                  {pendingCorrections.length} pending
+                  {pendingTotal} pending
                 </span>
               </div>
             </div>
           </div>
 
-          {pendingCorrections.length === 0 ? (
+          {pendingTotal === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 px-4 py-10 text-center">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F2F6F7] text-[#8294A0]">
                 <ClipboardCheck className="h-4 w-4" />
@@ -845,63 +891,68 @@ export function TeamAttendanceView({ businessDate }: { businessDate: string }) {
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-[#EEF3F5]">
-              {pendingCorrections.map(item => {
-                const typeMeta = correctionTypeMeta(item.correctionType);
-                const TypeIcon = typeMeta.icon;
-                const timePreview = correctionTimePreview(item);
-                return (
-                  <li
-                    key={item.id}
-                    className="flex flex-wrap items-center gap-3 px-4 py-3.5 transition hover:bg-[#FBFCFD]"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EAF7F4] text-[10px] font-extrabold text-[#087A6D]">
-                      {initials(
-                        item.employeeName ?? null,
-                        item.employeeEmail || ""
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-xs font-extrabold text-[#173247]">
-                          {item.employeeName || item.employeeEmail || "—"}
-                        </p>
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] ${typeMeta.chip}`}
-                        >
-                          <TypeIcon className="h-3 w-3" />
-                          {typeMeta.label}
-                        </span>
-                        <span className="inline-flex items-center rounded-full bg-[#FFF5E7] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] text-[#A87532]">
-                          Pending
-                        </span>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-[#718494]">
-                        <span className="inline-flex items-center gap-1">
-                          <Clock3 className="h-3 w-3 text-[#92A1AA]" />
-                          {formatDate(item.workDate)}
-                        </span>
-                        {timePreview ? (
-                          <span className="text-[#536D7E]">{timePreview}</span>
-                        ) : null}
-                        {item.reason ? (
-                          <span className="max-w-full truncate text-[#8294A0]">
-                            {item.reason}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setReviewRequest(item)}
-                      className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#0E9384] px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-[0.08em] text-white transition hover:bg-[#0a7d71]"
+            <div>
+              <ul className="divide-y divide-[#EEF3F5]">
+                {pendingCorrections.map(item => {
+                  const typeMeta = correctionTypeMeta(item.correctionType);
+                  const TypeIcon = typeMeta.icon;
+                  const timePreview = correctionTimePreview(item);
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex flex-wrap items-center gap-3 px-4 py-3.5 transition hover:bg-[#FBFCFD]"
                     >
-                      Review
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EAF7F4] text-[10px] font-extrabold text-[#087A6D]">
+                        {initials(
+                          item.employeeName ?? null,
+                          item.employeeEmail || ""
+                        )}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-xs font-extrabold text-[#173247]">
+                            {item.employeeName || item.employeeEmail || "—"}
+                          </p>
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] ${typeMeta.chip}`}
+                          >
+                            <TypeIcon className="h-3 w-3" />
+                            {typeMeta.label}
+                          </span>
+                          <span className="inline-flex items-center rounded-full bg-[#FFF5E7] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] text-[#A87532]">
+                            Pending
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-[#718494]">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock3 className="h-3 w-3 text-[#92A1AA]" />
+                            {formatDate(item.workDate)}
+                          </span>
+                          {timePreview ? (
+                            <span className="text-[#536D7E]">{timePreview}</span>
+                          ) : null}
+                          {item.reason ? (
+                            <span className="max-w-full truncate text-[#8294A0]">
+                              {item.reason}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setReviewRequest(item)}
+                        className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#0E9384] px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-[0.08em] text-white transition hover:bg-[#0a7d71]"
+                      >
+                        Review
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              <TablePagination
+                {...correctionsListPage.paginationProps(pendingTotal)}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -972,16 +1023,17 @@ export function TeamAttendanceView({ businessDate }: { businessDate: string }) {
       </div>
 
       <div className="overflow-x-auto">
-        <div className="min-w-[860px]">
-          <div className="grid grid-cols-[1.2fr_160px_100px_100px_1.1fr_150px] gap-3 border-b border-[#EAF0F2] bg-gradient-to-b from-[#F8FAFB] to-[#F3F7F8] px-5 py-3.5 text-left text-[9px] font-extrabold uppercase tracking-[0.12em] text-[#7890A0]">
+        <div className="min-w-[980px]">
+          <div className="grid grid-cols-[1.15fr_140px_160px_90px_90px_1fr_140px] gap-3 border-b border-[#EAF0F2] bg-gradient-to-b from-[#F8FAFB] to-[#F3F7F8] px-5 py-3.5 text-left text-[9px] font-extrabold uppercase tracking-[0.12em] text-[#7890A0]">
             <span>Team member</span>
             <span>Status</span>
+            <span>Leave</span>
             <span>Punch in</span>
             <span>Punch out</span>
             <span>Device / IP</span>
             <span>Action</span>
           </div>
-          {rows.map(({ user, attendance: record, onLeave }) => {
+          {rows.map(({ user, attendance: record, onLeave, leave }) => {
             const pending =
               (record ? pendingByAttendanceId.get(record.id) : null) ??
               pendingByUserId.get(user.id) ??
@@ -992,12 +1044,14 @@ export function TeamAttendanceView({ businessDate }: { businessDate: string }) {
             return (
               <div
                 key={user.id}
-                className={`grid grid-cols-[1.2fr_160px_100px_100px_1.1fr_150px] gap-3 border-b border-[#EEF3F5] px-5 py-4 transition last:border-b-0 ${
+                className={`grid grid-cols-[1.15fr_140px_160px_90px_90px_1fr_140px] gap-3 border-b border-[#EEF3F5] px-5 py-3.5 transition last:border-b-0 ${
                   !user.isActive
                     ? "bg-[#FFF8F7] shadow-[inset_3px_0_0_0_#C96B63] hover:bg-[#FFF1EF]"
-                    : managed
-                      ? "bg-[#FCFAF6] shadow-[inset_3px_0_0_0_#C9A66B] hover:bg-[#FBFCFD]"
-                      : "hover:bg-[#FBFCFD]"
+                    : leave
+                      ? "bg-[#F7FAFC] shadow-[inset_3px_0_0_0_#6B9BC9] hover:bg-[#F3F8FB]"
+                      : managed
+                        ? "bg-[#FCFAF6] shadow-[inset_3px_0_0_0_#C9A66B] hover:bg-[#FBFCFD]"
+                        : "hover:bg-[#FBFCFD]"
                 }`}
               >
                 <div className="flex min-w-0 items-center gap-2.5 text-left">
@@ -1031,6 +1085,7 @@ export function TeamAttendanceView({ businessDate }: { businessDate: string }) {
                   pending={pending}
                   onLeave={onLeave}
                 />
+                <TeamLeaveCell leave={leave} />
                 <span className="my-auto text-left text-xs font-semibold text-[#536D7E]">
                   {record?.punchInAt ? formatTime(record.punchInAt) : "—"}
                 </span>
@@ -1065,6 +1120,9 @@ export function TeamAttendanceView({ businessDate }: { businessDate: string }) {
           })}
         </div>
       </div>
+      <TablePagination
+        {...teamListPage.paginationProps(teamAttendance.data?.page.total ?? 0)}
+      />
       {reviewRequest ? (
         <ReviewCorrectionDialog
           request={reviewRequest}

@@ -9,6 +9,7 @@ import {
   listPendingPunchOutCorrectionRequests,
 } from "@/lib/operations";
 import { canManagePunchOutCorrections } from "@/lib/punch-out-correction-rules";
+import { listResponseWithOptionalPaging } from "@/lib/pagination";
 import { getCurrentUser } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -69,12 +70,22 @@ export async function GET(request: NextRequest) {
       let requests = await listMyPunchOutCorrectionRequests(user.id);
       if (workDate)
         requests = requests.filter((item) => item.workDate === workDate);
-      return NextResponse.json({ requests });
+      return NextResponse.json(
+        listResponseWithOptionalPaging(
+          "requests",
+          requests,
+          request.nextUrl.searchParams,
+        ),
+      );
     }
 
-    return NextResponse.json({
-      requests: await listPendingPunchOutCorrectionRequests(user, workDate),
-    });
+    return NextResponse.json(
+      listResponseWithOptionalPaging(
+        "requests",
+        await listPendingPunchOutCorrectionRequests(user, workDate),
+        request.nextUrl.searchParams,
+      ),
+    );
   } catch (error) {
     const { error: message, status } = apiError(
       error,
