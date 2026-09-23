@@ -10,6 +10,7 @@ import {
   manualPunchOutEmployee,
   rejectPunchOutCorrectionRequest,
 } from "@/features/attendance/api/punch-out-requests-api";
+import type { ListPageQuery } from "@/lib/pagination";
 import {
   invalidateAttendance,
   invalidateNotifications,
@@ -20,7 +21,9 @@ import type {
   RejectPunchOutCorrectionInput,
 } from "@/types/api.types";
 
-async function invalidatePunchOutRelated(queryClient: ReturnType<typeof useQueryClient>) {
+async function invalidatePunchOutRelated(
+  queryClient: ReturnType<typeof useQueryClient>,
+) {
   await Promise.all([
     invalidateAttendance(queryClient),
     invalidateNotifications(queryClient),
@@ -38,15 +41,33 @@ export function useMyPunchOutCorrectionRequests(enabled = true) {
   });
 }
 
+/** Full pending list — used to map pending badges onto team rows. */
 export function usePendingPunchOutCorrectionRequests(
   workDate: string | undefined,
   enabled: boolean,
 ) {
   return useQuery({
-    queryKey: queryKeys.attendance.pendingCorrectionRequests(workDate),
+    queryKey: queryKeys.attendance.pendingCorrectionRequests(workDate, null),
     queryFn: async () =>
       (await getPendingPunchOutCorrectionRequests(workDate)).requests,
     enabled,
+  });
+}
+
+/** Paged pending corrections queue. */
+export function usePendingPunchOutCorrectionRequestsPage(
+  workDate: string | undefined,
+  page: ListPageQuery,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: queryKeys.attendance.pendingCorrectionRequests(workDate, page),
+    queryFn: async () => {
+      const result = await getPendingPunchOutCorrectionRequests(workDate, page);
+      return result.page!;
+    },
+    enabled,
+    placeholderData: (previous) => previous,
   });
 }
 

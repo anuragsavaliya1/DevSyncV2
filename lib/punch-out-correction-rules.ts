@@ -16,11 +16,11 @@ export function isPunchOutCorrectionDateAllowed(
   today: string,
   _yesterday?: string,
 ) {
-  // Same window as punch-in / report attendance: past working days within 62 days.
+  // Same window as punch-in / report attendance: today and past working days within 62 days.
   return isPunchInCorrectionDateAllowed(workDate, today);
 }
 
-/** Punch-in / report-attendance: any past working day within 62 days (not Sunday). */
+/** Punch-in / report-attendance: today or any past working day within 62 days (not Sunday). */
 export function isPunchInCorrectionDateAllowed(workDate: string, today: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(workDate)) return false;
   if (workDate > today) return false;

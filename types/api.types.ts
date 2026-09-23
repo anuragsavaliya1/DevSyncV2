@@ -204,7 +204,7 @@ export type CreateLeaveRequestInput = {
   startDate: string;
   endDate: string;
   reason: string;
-  /** Manager/Admin only — optional note when applying for an employee. */
+  /** Optional note from the applicant (or manager when applying for an employee). */
   managerRemark?: string;
   /** Manager/Admin only — apply leave for another employee. */
   userId?: string;
@@ -433,6 +433,10 @@ export type AttendanceReportPayload = {
     }
   >;
   entries: AttendanceReportEntry[];
+  /** Present when entries are fetched with start/limit. */
+  total?: number;
+  start?: number;
+  limit?: number;
   employees: Array<{
     id: string;
     displayName: string | null;

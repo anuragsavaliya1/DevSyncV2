@@ -16,6 +16,7 @@ import {
   getMyLeaveRequests,
   rejectLeaveRequest,
 } from "@/features/leave/api/leave-api";
+import type { ListPageQuery } from "@/lib/pagination";
 import {
   invalidateAttendance,
   invalidateLeave,
@@ -37,10 +38,35 @@ async function invalidateLeaveRelated(
   ]);
 }
 
+/** Full my-leave list (no paging) — used by review dialogs / history helpers. */
 export function useMyLeaveRequests(enabled = true) {
   return useQuery({
-    queryKey: queryKeys.leave.mine,
+    queryKey: queryKeys.leave.mine(null),
     queryFn: async () => (await getMyLeaveRequests()).requests,
+    enabled,
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** Paged my-leave list for the Leave History table. */
+export function useMyLeaveRequestsPage(
+  page: ListPageQuery,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: queryKeys.leave.mine(page),
+    queryFn: async () => {
+      const result = await getMyLeaveRequests(page);
+      return {
+        page: result.page!,
+        counts: result.counts ?? {
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+          total: result.page!.total,
+        },
+      };
+    },
     enabled,
     placeholderData: (previous) => previous,
   });
@@ -53,6 +79,33 @@ export function useLeaveRequestsForReview(
   return useQuery({
     queryKey: queryKeys.leave.list({ status }),
     queryFn: async () => (await getLeaveRequestsForReview(status)).requests,
+    enabled,
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** Paged leave review list — fires start/limit on every page change. */
+export function useLeaveRequestsForReviewPage(
+  status: LeaveStatus | "all",
+  page: ListPageQuery,
+  options?: { employeeId?: string | null; enabled?: boolean },
+) {
+  const employeeId = options?.employeeId?.trim() || null;
+  const enabled = options?.enabled ?? true;
+  return useQuery({
+    queryKey: queryKeys.leave.list({
+      status,
+      employeeId: employeeId ?? undefined,
+      start: page.start,
+      limit: page.limit,
+    }),
+    queryFn: async () => {
+      const result = await getLeaveRequestsForReview(status, {
+        employeeId,
+        page,
+      });
+      return result.page!;
+    },
     enabled,
     placeholderData: (previous) => previous,
   });

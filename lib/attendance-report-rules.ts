@@ -35,6 +35,26 @@ export const ATTENDANCE_REPORT_ACTIONS = [
 export type AttendanceReportAction =
   (typeof ATTENDANCE_REPORT_ACTIONS)[number];
 
+/** Pill classes for Exception details Action column. */
+export function attendanceReportActionPillClass(action: AttendanceReportAction) {
+  switch (action) {
+    case "Arrived Late":
+      return "bg-[#FFF7ED] text-[#B45309]";
+    case "Going Early":
+      return "bg-[#FFF8F0] text-[#A87532]";
+    case "On Leave":
+      return "bg-[#EEF5FB] text-[#2F6B9A]";
+    case "Absent":
+      return "bg-[#F3F4F6] text-[#6B7280]";
+    case "Missing Punch":
+      return "bg-[#FEF2F2] text-[#B91C1C]";
+    case "Other":
+      return "bg-[#F1F5F9] text-[#475569]";
+    default:
+      return "bg-[#F3F4F6] text-[#6B7280]";
+  }
+}
+
 export type AttendanceReportSource = "attendance" | "leave" | "manual";
 
 export type AttendanceReportEmployee = {

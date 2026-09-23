@@ -11,9 +11,11 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  X,
 } from "lucide-react";
 import { EmptyState, ErrorState } from "@/components/shared/error-state";
 import { ActionLoader, BusyOverlay } from "@/components/shared/action-loader";
+import { TablePagination } from "@/components/shared/table-pagination";
 import { ThemedSelect } from "@/components/shared/themed-select";
 import { useTeamAttendance } from "@/features/attendance/hooks/use-attendance";
 import {
@@ -25,6 +27,9 @@ import {
 import { exportAttendanceReportExcel } from "@/features/attendance-reports/utils/export-excel";
 import { AttendanceSkeleton } from "@/features/workspace/components/loading-skeletons";
 import { formatDate } from "@/features/workspace/utils/format";
+import { useClientPagination } from "@/hooks/use-client-pagination";
+import { useListPagination } from "@/hooks/use-list-pagination";
+import { QUERY_CONFIG } from "@/constants/query-config";
 import {
   addDaysToDateKey,
   formatMonthTitle,
@@ -35,6 +40,7 @@ import {
 import {
   ATTENDANCE_REPORT_ACTIONS,
   assertAttendanceReportMonthRange,
+  attendanceReportActionPillClass,
 } from "@/lib/attendance-report-rules";
 import type {
   AttendanceReportAction,
@@ -133,15 +139,30 @@ export function AttendanceReportsModule() {
     employeeId: string | null;
   } | null>(null);
   const [actionFilter, setActionFilter] = useState("all");
+  const entriesListPage = useListPagination(
+    `${generatedQuery?.fromMonth ?? ""}:${generatedQuery?.toMonth ?? ""}:${generatedQuery?.employeeId ?? "all"}:${actionFilter}`,
+  );
   const [error, setError] = useState<string | null>(null);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [editing, setEditing] = useState<AttendanceReportEntry | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AttendanceReportEntry | null>(
+    null,
+  );
   const [showAdd, setShowAdd] = useState(false);
   const [remarkDrafts, setRemarkDrafts] = useState<Record<string, string>>({});
 
   const teamAttendance = useTeamAttendance(today, true, "active");
   const enabled = Boolean(generatedQuery);
-  const reportQuery = useAttendanceReport(generatedQuery, enabled);
+  const reportQuery = useAttendanceReport(
+    generatedQuery
+      ? {
+          ...generatedQuery,
+          action: actionFilter,
+          page: entriesListPage.pageQuery,
+        }
+      : null,
+    enabled,
+  );
   const createEntry = useCreateAttendanceReportEntry();
   const updateEntry = useUpdateAttendanceReportEntry();
   const deleteEntry = useDeleteAttendanceReportEntry();
@@ -171,11 +192,20 @@ export function AttendanceReportsModule() {
     ];
   }, [teamAttendance.data, report?.employees]);
 
-  const filteredEntries = useMemo(() => {
-    const entries = report?.entries ?? [];
-    if (actionFilter === "all") return entries;
-    return entries.filter((entry) => entry.action === actionFilter);
-  }, [report?.entries, actionFilter]);
+  const entries = report?.entries ?? [];
+  const entriesTotal = report?.total ?? entries.length;
+  const employeeSummaryRows = report?.employeeSummary ?? [];
+  const monthSummaryRows = report?.monthSummaries ?? [];
+  const employeeSummaryPage = useClientPagination(
+    employeeSummaryRows,
+    QUERY_CONFIG.listPageSize,
+    `${generatedQuery?.fromMonth ?? ""}:${generatedQuery?.toMonth ?? ""}:employees`,
+  );
+  const monthSummaryPage = useClientPagination(
+    monthSummaryRows,
+    QUERY_CONFIG.listPageSize,
+    `${generatedQuery?.fromMonth ?? ""}:${generatedQuery?.toMonth ?? ""}:months`,
+  );
 
   const focusedEmployeeSummary = report?.employeeSummary[0] ?? null;
   const isSingleEmployee = Boolean(
@@ -276,6 +306,7 @@ export function AttendanceReportsModule() {
         month: monthKeyFromDate(entry.date),
         id: entry.id,
       });
+      setDeleteTarget(null);
     } catch (deleteError) {
       setError(
         deleteError instanceof Error
@@ -283,6 +314,11 @@ export function AttendanceReportsModule() {
           : "Could not delete entry.",
       );
     }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    await onDelete(deleteTarget);
   }
 
   return (
@@ -473,7 +509,7 @@ export function AttendanceReportsModule() {
                         </tr>
                       </thead>
                       <tbody>
-                        {report.monthSummaries.map((row) => (
+                        {monthSummaryPage.pageItems.map((row) => (
                           <tr key={row.month}>
                             <td className="font-semibold text-[#173247]">
                               {row.monthLabel}
@@ -489,6 +525,7 @@ export function AttendanceReportsModule() {
                         ))}
                       </tbody>
                     </table>
+                    <TablePagination {...monthSummaryPage.paginationProps} />
                   </div>
                 </div>
               ) : null}
@@ -519,7 +556,7 @@ export function AttendanceReportsModule() {
                       </tr>
                     </thead>
                     <tbody>
-                      {report.employeeSummary.map((row) => (
+                      {employeeSummaryPage.pageItems.map((row) => (
                         <tr key={row.employeeId}>
                           <td className="font-semibold text-[#173247]">
                             {row.employeeName}
@@ -535,6 +572,7 @@ export function AttendanceReportsModule() {
                       ))}
                     </tbody>
                   </table>
+                  <TablePagination {...employeeSummaryPage.paginationProps} />
                 </div>
               </div>
             </section>
@@ -559,7 +597,7 @@ export function AttendanceReportsModule() {
             </div>
 
             <div className="p-4 sm:p-5">
-              {!filteredEntries.length ? (
+              {!entriesTotal ? (
                 <EmptyState
                   icon={FileSpreadsheet}
                   title={`No attendance exceptions found for ${report.monthLabel}.`}
@@ -580,7 +618,7 @@ export function AttendanceReportsModule() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredEntries.map((entry) => (
+                      {entries.map((entry) => (
                         <tr key={entry.id}>
                           <td className="whitespace-nowrap font-semibold text-[#173247]">
                             {formatDate(entry.date)}
@@ -588,7 +626,13 @@ export function AttendanceReportsModule() {
                           <td className="font-semibold text-[#173247]">
                             {entry.employeeName}
                           </td>
-                          <td>{entry.action}</td>
+                          <td>
+                            <span
+                              className={`inline-flex w-fit rounded-full px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.08em] ${attendanceReportActionPillClass(entry.action)}`}
+                            >
+                              {entry.action}
+                            </span>
+                          </td>
                           <td className="text-[#486170]">{entry.details}</td>
                           <td>
                             <div className="flex gap-1">
@@ -624,14 +668,11 @@ export function AttendanceReportsModule() {
                               <button
                                 type="button"
                                 aria-label="Delete entry"
-                                onClick={() => void onDelete(entry)}
-                                className="rounded-lg p-1.5 text-[#A64D43] hover:bg-[#FFF8F7]"
+                                disabled={actionBusy}
+                                onClick={() => setDeleteTarget(entry)}
+                                className="rounded-lg p-1.5 text-[#A64D43] hover:bg-[#FFF8F7] disabled:opacity-50"
                               >
-                                {deleteEntry.isPending ? (
-                                  <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                )}
+                                <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             </div>
                           </td>
@@ -639,6 +680,9 @@ export function AttendanceReportsModule() {
                       ))}
                     </tbody>
                   </table>
+                  <TablePagination
+                    {...entriesListPage.paginationProps(entriesTotal)}
+                  />
                 </div>
               )}
             </div>
@@ -734,6 +778,104 @@ export function AttendanceReportsModule() {
           }}
         />
       ) : null}
+
+      {deleteTarget ? (
+        <DeleteEntryDialog
+          entry={deleteTarget}
+          busy={deleteEntry.isPending}
+          onCancel={() => {
+            if (!deleteEntry.isPending) setDeleteTarget(null);
+          }}
+          onConfirm={() => void confirmDelete()}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function DeleteEntryDialog({
+  entry,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  entry: AttendanceReportEntry;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#102A3A]/35 p-4"
+      role="presentation"
+      onClick={busy ? undefined : onCancel}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-report-entry-title"
+        aria-describedby="delete-report-entry-description"
+        className="w-full max-w-md rounded-2xl border border-[#E5EDF0] bg-white p-5 shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-[#A64D43]">
+              Confirm removal
+            </p>
+            <h3
+              id="delete-report-entry-title"
+              className="mt-1 text-sm font-extrabold text-[#294354]"
+            >
+              Delete this report entry?
+            </h3>
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            disabled={busy}
+            onClick={onCancel}
+            className="rounded-lg p-1.5 text-[#8294A0] hover:bg-[#F4F7F9] disabled:opacity-60"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <p
+          id="delete-report-entry-description"
+          className="mt-3 text-sm font-medium leading-6 text-[#6A8191]"
+        >
+          This will permanently remove{" "}
+          <span className="font-extrabold text-[#294354]">{entry.action}</span>{" "}
+          for{" "}
+          <span className="font-extrabold text-[#294354]">
+            {entry.employeeName}
+          </span>{" "}
+          on{" "}
+          <span className="font-extrabold text-[#294354]">
+            {formatDate(entry.date)}
+          </span>
+          .
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onCancel}
+            className="rounded-xl border border-[#E5EDF0] px-3 py-2 text-xs font-extrabold text-[#486170] disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onConfirm}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#C96B63] px-3.5 py-2 text-xs font-extrabold text-white hover:bg-[#B85A52] disabled:opacity-50"
+          >
+            {busy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : null}
+            Delete
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

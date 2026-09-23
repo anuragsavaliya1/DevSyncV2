@@ -1,4 +1,8 @@
 import { apiRequest } from "@/lib/api/api-client";
+import {
+  appendListPageParams,
+  type ListPageQuery,
+} from "@/lib/pagination";
 import type {
   AttendanceReportPayload,
   CreateAttendanceReportEntryInput,
@@ -10,6 +14,8 @@ export type AttendanceReportQueryInput = {
   fromMonth?: string;
   toMonth?: string;
   employeeId?: string | null;
+  action?: string | null;
+  page?: ListPageQuery | null;
 };
 
 export async function getAttendanceReport(
@@ -25,10 +31,18 @@ export async function getAttendanceReport(
     if (toMonth) params.set("toMonth", toMonth);
     if (input.month && !input.fromMonth) params.set("month", input.month);
     if (input.employeeId) params.set("employeeId", input.employeeId);
+    if (input.action && input.action !== "all") {
+      params.set("action", input.action);
+    }
+    appendListPageParams(params, input.page);
   }
-  return apiRequest<AttendanceReportPayload>(
-    `/api/attendance-reports?${params.toString()}`,
-  );
+  return apiRequest<
+    AttendanceReportPayload & {
+      total?: number;
+      start?: number;
+      limit?: number;
+    }
+  >(`/api/attendance-reports?${params.toString()}`);
 }
 
 export async function createAttendanceReportEntry(

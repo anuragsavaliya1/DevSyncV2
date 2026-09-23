@@ -11,6 +11,7 @@ import {
   normalizeEmployeeHistoryFilter,
   type EmployeeHistoryRange,
 } from "@/lib/employee-history-rules";
+import { listResponseWithOptionalPaging } from "@/lib/pagination";
 import { getCurrentUser } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -68,14 +69,18 @@ export async function GET(request: NextRequest) {
       if (toDate) dateKeySchema.parse(toDate);
     }
 
-    return NextResponse.json({
-      tasks: await listAssignedTasks({
-        developerUserId: requestedUserId,
-        status: status as "pending" | "completed" | undefined,
-        fromDate,
-        toDate,
-      }),
-    });
+    return NextResponse.json(
+      listResponseWithOptionalPaging(
+        "tasks",
+        await listAssignedTasks({
+          developerUserId: requestedUserId,
+          status: status as "pending" | "completed" | undefined,
+          fromDate,
+          toDate,
+        }),
+        search,
+      ),
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Could not load tasks.";

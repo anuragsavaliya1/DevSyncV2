@@ -7,10 +7,20 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccessControlPanel } from "../components/workspace/team-management";
 
 afterEach(() => cleanup());
+
+function renderWithQuery(ui: React.ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
+  );
+}
 
 const users = [
   {
@@ -38,7 +48,7 @@ const users = [
 describe("AccessControlPanel", () => {
   it("surfaces a failed activity change as a visually distinct, clear status without changing the employee", async () => {
     const onChangeActivity = vi.fn().mockRejectedValue(new Error("Forbidden"));
-    render(
+    renderWithQuery(
       <AccessControlPanel
         users={users}
         selfId="admin-id"
@@ -67,7 +77,7 @@ describe("AccessControlPanel", () => {
 
 it("requires an explicit DELETE confirmation and preserves the employee when deletion fails", async () => {
   const onDelete = vi.fn().mockRejectedValue(new Error("Delete failed"));
-  render(
+  renderWithQuery(
     <AccessControlPanel
       users={users}
       selfId="admin-id"
@@ -103,7 +113,7 @@ it("requires an explicit DELETE confirmation and preserves the employee when del
 
 it("shows a success status after an employee is deleted", async () => {
   const onDelete = vi.fn().mockResolvedValue(undefined);
-  render(
+  renderWithQuery(
     <AccessControlPanel
       users={users}
       selfId="admin-id"

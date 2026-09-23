@@ -8,6 +8,7 @@ import {
   listMyLeaveRequests,
 } from "@/lib/operations";
 import { canManageLeaveRequests } from "@/lib/leave-rules";
+import { listResponseWithOptionalPaging } from "@/lib/pagination";
 import { getCurrentUser } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -41,24 +42,40 @@ export async function GET(request: NextRequest) {
   try {
     const scope = request.nextUrl.searchParams.get("scope");
     const statusParam = request.nextUrl.searchParams.get("status");
+    const employeeId =
+      request.nextUrl.searchParams.get("employeeId")?.trim() || null;
     const wantsOwn = scope === "mine" || !canManageLeaveRequests(user.role);
 
-    if (wantsOwn) {
-      return NextResponse.json({
-        requests: await listMyLeaveRequests(user.id),
-      });
+    let requests = wantsOwn
+      ? await listMyLeaveRequests(user.id)
+      : await listLeaveRequestsForReviewers(
+          user,
+          statusParam === "pending" ||
+            statusParam === "approved" ||
+            statusParam === "rejected" ||
+            statusParam === "all"
+            ? statusParam
+            : "all",
+        );
+
+    if (employeeId && !wantsOwn) {
+      requests = requests.filter((item) => item.userId === employeeId);
     }
 
-    const status =
-      statusParam === "pending" ||
-      statusParam === "approved" ||
-      statusParam === "rejected" ||
-      statusParam === "all"
-        ? statusParam
-        : "all";
+    const counts = {
+      pending: requests.filter((item) => item.status === "pending").length,
+      approved: requests.filter((item) => item.status === "approved").length,
+      rejected: requests.filter((item) => item.status === "rejected").length,
+      total: requests.length,
+    };
 
     return NextResponse.json({
-      requests: await listLeaveRequestsForReviewers(user, status),
+      counts,
+      ...listResponseWithOptionalPaging(
+        "requests",
+        requests,
+        request.nextUrl.searchParams,
+      ),
     });
   } catch (error) {
     const { error: message, status } = apiError(

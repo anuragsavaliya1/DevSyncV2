@@ -8,6 +8,8 @@ export const QUERY_CONFIG = {
   retry: 1,
   refetchOnWindowFocus: false,
   refetchOnReconnect: true,
+  /** Default page size for table list pagination (start/limit). */
+  listPageSize: 10,
   notifications: {
     /** Near-real-time signal feed; replaceable later with WS/SSE without UI changes. */
     refetchInterval: 60_000,

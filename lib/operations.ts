@@ -721,23 +721,45 @@ export async function listTeamAttendanceRows(
         startDate: { $lte: workDate },
         endDate: { $gte: workDate },
       })
-      .project({ userId: 1, startDate: 1, endDate: 1 })
+      .project({
+        userId: 1,
+        startDate: 1,
+        endDate: 1,
+        leaveType: 1,
+        dayPortion: 1,
+        reason: 1,
+      })
       .toArray(),
     listHolidayInfoByDate(workDate, nextDateKey(workDate)),
   ]);
   const enriched = await attachPunchOutAudits(attendance);
   const byUserId = new Map(enriched.map((record) => [record.userId, record]));
-  const onLeaveUserIds = new Set(
-    leaveDocuments
-      .filter((document) =>
-        isLeaveCoveringDate(
-          { startDate: document.startDate, endDate: document.endDate },
-          workDate,
-          holidayByDate,
-        ),
+  const leaveByUserId = new Map<
+    string,
+    {
+      leaveType: LeaveType;
+      dayPortion: LeaveDayPortion;
+      reason: string;
+    }
+  >();
+  for (const document of leaveDocuments) {
+    if (
+      !isLeaveCoveringDate(
+        { startDate: document.startDate, endDate: document.endDate },
+        workDate,
+        holidayByDate,
       )
-      .map((document) => document.userId.toHexString()),
-  );
+    ) {
+      continue;
+    }
+    const userId = document.userId.toHexString();
+    if (leaveByUserId.has(userId)) continue;
+    leaveByUserId.set(userId, {
+      leaveType: document.leaveType,
+      dayPortion: normalizeLeaveDayPortion(document.dayPortion),
+      reason: (document.reason || "").trim(),
+    });
+  }
   return users
     .filter((user) => {
       if (!isAttendanceTrackedRole(user.role)) return false;
@@ -745,13 +767,18 @@ export async function listTeamAttendanceRows(
       if (activity === "inactive") return !user.isActive;
       return true;
     })
-    .map((user) => ({
-      user,
-      attendance: byUserId.get(user.id) || null,
-      onLeave:
-        onLeaveUserIds.has(user.id) &&
-        !byUserId.get(user.id)?.punchInAt,
-    }));
+    .map((user) => {
+      const attendance = byUserId.get(user.id) || null;
+      const leave = leaveByUserId.get(user.id) ?? null;
+      return {
+        user,
+        attendance,
+        // Count On Leave only when they have leave and have not punched in yet
+        // (half-day / hourly with punch-in counts as Present; leave still shown in table).
+        onLeave: Boolean(leave) && !attendance?.punchInAt,
+        leave,
+      };
+    });
 }
 
 function mapUpdate(document: WithId<WorkUpdateDocument>): WorkUpdate {
@@ -1861,11 +1888,8 @@ export async function createAttendanceCorrectionRequest(
     });
     attendanceId = attendance ? objectId(attendance.id, "attendance ID") : null;
   } else {
-    // punch_in only — fill missing punch-in; do not overwrite existing punch-in.
+    // punch_in — create missing punch-in, or request a corrected punch-in time.
     if (!requestedPunchInAt) throw new Error("Requested punch-in time is required.");
-    if (attendance?.punchInAt) {
-      throw new Error("Punch-in is already recorded for this date.");
-    }
     if (attendance && !attendance.punchOutAt && !attendance.punchInAt) {
       throw new Error("Invalid attendance record for punch-in correction.");
     }
@@ -2260,13 +2284,12 @@ export async function approvePunchOutCorrectionRequest(
       Boolean(existing?.punchInAt) &&
       correctionType === "punch_in_and_out" &&
       Boolean(request.requestedPunchOutAt);
-
-    if (existing?.punchInAt && !isEditBoth) {
-      throw new Error("Punch-in is already recorded and cannot be overwritten.");
-    }
+    const isEditPunchInOnly =
+      Boolean(existing?.punchInAt) && correctionType === "punch_in";
 
     if (isEditBoth && existing) {
-      // Employee requested an edit of existing punch-in and punch-out times.
+      // Employee requested an edit of existing punch-in and punch-out times
+      // (or punch-in today + add punch-out).
       attendanceUpdate = await attendance.findOneAndUpdate(
         { _id: existing._id, userId: request.userId },
         {
@@ -2281,6 +2304,35 @@ export async function approvePunchOutCorrectionRequest(
             punchOutRecordedByRole: actor.role,
             classification,
             state: "punched_out",
+            updatedAt: now,
+          },
+        },
+        { returnDocument: "after" },
+      );
+      if (!attendanceUpdate) {
+        throw new Error("Attendance record could not be updated.");
+      }
+    } else if (isEditPunchInOnly && existing) {
+      // Correct an existing punch-in (e.g. forgot earlier, punched late).
+      assertRequestedPunchInIsValid({
+        requestedPunchInAt: request.requestedPunchInAt,
+        now,
+        workDate: request.workDate,
+        workDateOfRequested: indiaDateKey(request.requestedPunchInAt),
+        existingPunchOutAt: existing.punchOutAt
+          ? new Date(existing.punchOutAt)
+          : null,
+      });
+      attendanceUpdate = await attendance.findOneAndUpdate(
+        { _id: existing._id, userId: request.userId },
+        {
+          $set: {
+            punchInAt: request.requestedPunchInAt,
+            punchInSource: "regularization",
+            punchInRecordedByUserId: objectId(actor.id, "actor user ID"),
+            punchInRecordedByRole: actor.role,
+            classification,
+            state: existing.punchOutAt ? "punched_out" : "working",
             updatedAt: now,
           },
         },
@@ -2843,7 +2895,7 @@ export async function createLeaveRequest(
     endDate: string;
     reason: string;
     dayPortion?: string;
-    /** Manager/Admin only — optional note when applying for an employee. */
+    /** Optional note from applicant or manager/admin. */
     managerRemark?: string;
     /** Manager/Admin only. */
     forUserId?: string;
@@ -3404,10 +3456,18 @@ export async function getAdminDashboard(
   const usersById = new Map(users.map((user) => [user.id, user]));
   const leaves = await enrichLeaveRequests(leaveDocuments);
   const onLeaveToday = filterOnLeaveToday(leaves, today, holidayByDate);
-  const onLeaveUserIds = [...new Set(onLeaveToday.map((row) => row.employeeId))];
   const punchedInUserIds = attendance
     .filter((record) => Boolean(record.punchInAt))
     .map((record) => record.userId);
+  const punchedInSet = new Set(punchedInUserIds);
+  // Summary On Leave excludes punched-in half-day / hourly; table still lists all leave today.
+  const onLeaveUserIds = [
+    ...new Set(
+      onLeaveToday
+        .filter((row) => !punchedInSet.has(row.employeeId))
+        .map((row) => row.employeeId),
+    ),
+  ];
   const calendarHolidays = [...holidayByDate.entries()]
     .map(([date, info]) => ({
       id: info.id,

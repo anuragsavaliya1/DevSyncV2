@@ -1,4 +1,10 @@
 import { apiRequest } from "@/lib/api/api-client";
+import {
+  appendListPageParams,
+  normalizePaginatedList,
+  type ListPageQuery,
+  type PaginatedListResult,
+} from "@/lib/pagination";
 import type {
   CreateLeaveRequestInput,
   LeaveRequest,
@@ -14,17 +20,59 @@ export async function createLeaveRequest(input: CreateLeaveRequestInput) {
   });
 }
 
-export async function getMyLeaveRequests() {
-  return apiRequest<{ requests: LeaveRequest[] }>("/api/leave?scope=mine");
+export async function getMyLeaveRequests(page?: ListPageQuery | null) {
+  const params = new URLSearchParams({ scope: "mine" });
+  appendListPageParams(params, page);
+  const data = await apiRequest<{
+    requests: LeaveRequest[];
+    total?: number;
+    start?: number;
+    limit?: number;
+    counts?: {
+      pending: number;
+      approved: number;
+      rejected: number;
+      total: number;
+    };
+  }>(`/api/leave?${params.toString()}`);
+  if (!page) return { requests: data.requests, counts: data.counts };
+  return {
+    requests: data.requests,
+    counts: data.counts,
+    page: normalizePaginatedList(data.requests, data, page),
+  };
 }
 
-export async function getLeaveRequestsForReview(status?: LeaveStatus | "all") {
+export async function getLeaveRequestsForReview(
+  status?: LeaveStatus | "all",
+  options?: {
+    employeeId?: string | null;
+    page?: ListPageQuery | null;
+  },
+) {
   const params = new URLSearchParams();
   if (status) params.set("status", status);
+  if (options?.employeeId) params.set("employeeId", options.employeeId);
+  appendListPageParams(params, options?.page);
   const query = params.toString();
-  return apiRequest<{ requests: LeaveRequest[] }>(
-    `/api/leave${query ? `?${query}` : ""}`,
-  );
+  const data = await apiRequest<{
+    requests: LeaveRequest[];
+    total?: number;
+    start?: number;
+    limit?: number;
+    counts?: {
+      pending: number;
+      approved: number;
+      rejected: number;
+      total: number;
+    };
+  }>(`/api/leave${query ? `?${query}` : ""}`);
+  if (!options?.page) return { requests: data.requests, counts: data.counts };
+  return {
+    requests: data.requests,
+    counts: data.counts,
+    page: normalizePaginatedList(data.requests, data, options.page),
+  };
 }
 
 export async function getLeaveStatusSummary() {
@@ -57,3 +105,5 @@ export async function deleteLeaveRequest(requestId: string) {
     method: "DELETE",
   });
 }
+
+export type { PaginatedListResult };

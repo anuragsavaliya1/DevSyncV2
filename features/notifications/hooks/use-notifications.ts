@@ -17,16 +17,16 @@ import {
 import { invalidateNotifications } from "@/lib/query/invalidate";
 
 /**
- * Notification server state.
+ * Notification server state scoped to the signed-in user's unique id.
  * Polling interval is centralized in QUERY_CONFIG so this can later swap to WS/SSE
  * without changing consumers.
  */
-export function useNotifications(enabled = true) {
+export function useNotifications(userId: string, enabled = true) {
   return useQuery({
-    queryKey: queryKeys.notifications.all,
+    queryKey: queryKeys.notifications.list(userId),
     queryFn: async () =>
       listNotifications({ limit: QUERY_CONFIG.notifications.pageSize }),
-    enabled,
+    enabled: enabled && Boolean(userId),
     refetchInterval: enabled
       ? QUERY_CONFIG.notifications.refetchInterval
       : false,
@@ -34,9 +34,9 @@ export function useNotifications(enabled = true) {
 }
 
 /** Drawer infinite scroll feed — loads pages as the user scrolls. */
-export function useInfiniteNotifications(enabled = true) {
+export function useInfiniteNotifications(userId: string, enabled = true) {
   return useInfiniteQuery({
-    queryKey: queryKeys.notifications.infinite,
+    queryKey: queryKeys.notifications.infinite(userId),
     queryFn: async ({ pageParam }) =>
       listNotifications({
         limit: QUERY_CONFIG.notifications.pageSize,
@@ -45,7 +45,7 @@ export function useInfiniteNotifications(enabled = true) {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? lastPage.nextCursor : undefined,
-    enabled,
+    enabled: enabled && Boolean(userId),
   });
 }
 

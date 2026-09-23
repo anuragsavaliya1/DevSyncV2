@@ -5,6 +5,7 @@ import { CalendarDays, LoaderCircle, Trash2, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { BusyOverlay } from "@/components/shared/action-loader";
 import { EmptyState, ErrorState } from "@/components/shared/error-state";
+import { TablePagination } from "@/components/shared/table-pagination";
 import { ThemedSelect } from "@/components/shared/themed-select";
 import { useTeamAttendance } from "@/features/attendance/hooks/use-attendance";
 import { useHolidays } from "@/features/holidays/hooks/use-holidays";
@@ -13,8 +14,10 @@ import {
   useCreateLeaveRequest,
   useDeleteLeaveRequest,
   useLeaveRequestsForReview,
+  useLeaveRequestsForReviewPage,
   useLeaveStatusSummary,
   useMyLeaveRequests,
+  useMyLeaveRequestsPage,
   useRejectLeaveRequest,
 } from "@/features/leave/hooks/use-leave";
 import { AttendanceSkeleton } from "@/features/workspace/components/loading-skeletons";
@@ -22,6 +25,7 @@ import {
   formatDate,
   formatDateTime,
 } from "@/features/workspace/utils/format";
+import { useListPagination } from "@/hooks/use-list-pagination";
 import { addDaysToDateKey } from "@/lib/attendance-month";
 import {
   findLeaveBlockedDays,
@@ -377,13 +381,13 @@ function ApplyLeaveDialog({
         startDate,
         endDate: effectiveEnd,
         reason,
+        ...(managerRemark.trim()
+          ? { managerRemark: managerRemark.trim() }
+          : {}),
         ...(mode === "manager"
           ? {
               userId: employeeId,
               status,
-              ...(managerRemark.trim()
-                ? { managerRemark: managerRemark.trim() }
-                : {}),
             }
           : {}),
       });
@@ -597,20 +601,21 @@ function ApplyLeaveDialog({
                 placeholder="Why do you need leave?"
               />
             </label>
-            {mode === "manager" ? (
-              <label className="block">
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[#8B9BA6]">
-                  Remark
+            <label className="block">
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[#8B9BA6]">
+                Remark{" "}
+                <span className="normal-case tracking-normal text-[#A8B5BD]">
+                  (optional)
                 </span>
-                <textarea
-                  value={managerRemark}
-                  onChange={(event) => setManagerRemark(event.target.value)}
-                  rows={2}
-                  className="mt-1.5 w-full resize-none rounded-xl border border-[#E5EDF0] bg-white px-3 py-2.5 text-sm font-medium text-[#294354] outline-none focus:border-[#0E9384]"
-                  placeholder="Optional manager remark"
-                />
-              </label>
-            ) : null}
+              </span>
+              <textarea
+                value={managerRemark}
+                onChange={(event) => setManagerRemark(event.target.value)}
+                rows={2}
+                className="mt-1.5 w-full resize-none rounded-xl border border-[#E5EDF0] bg-white px-3 py-2.5 text-sm font-medium text-[#294354] outline-none focus:border-[#0E9384]"
+                placeholder="Optional note"
+              />
+            </label>
           </section>
 
           {error ? <ErrorState message={error} /> : null}
@@ -1052,18 +1057,17 @@ function MyLeavePanel({
   canReview: boolean;
   businessDate: string;
 }) {
-  const leaveQuery = useMyLeaveRequests();
+  const listPage = useListPagination();
+  const leaveQuery = useMyLeaveRequestsPage(listPage.pageQuery);
   const [showApply, setShowApply] = useState(false);
   const [selected, setSelected] = useState<LeaveRequest | null>(null);
 
-  const requests = leaveQuery.data ?? [];
-  const summary = useMemo(() => {
-    return {
-      pending: requests.filter((item) => item.status === "pending").length,
-      approved: requests.filter((item) => item.status === "approved").length,
-      rejected: requests.filter((item) => item.status === "rejected").length,
-    };
-  }, [requests]);
+  const requests = leaveQuery.data?.page.items ?? [];
+  const summary = leaveQuery.data?.counts ?? {
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  };
 
   if (leaveQuery.isLoading && !leaveQuery.data) return <AttendanceSkeleton />;
   if (leaveQuery.isError) {
@@ -1125,7 +1129,7 @@ function MyLeavePanel({
         <h3 className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#8B9BA6]">
           Leave History
         </h3>
-        {requests.length === 0 ? (
+        {(leaveQuery.data?.page.total ?? 0) === 0 ? (
           <div className="mt-3">
             <EmptyState
               icon={CalendarDays}
@@ -1134,42 +1138,52 @@ function MyLeavePanel({
             />
           </div>
         ) : (
-          <ul className="mt-3 divide-y divide-[#EEF3F5] overflow-hidden rounded-xl border border-[#EEF3F5]">
-            {requests.map((request) => (
-              <li key={request.id}>
-                <button
-                  type="button"
-                  onClick={() => setSelected(request)}
-                  className="flex w-full flex-col gap-2 px-3.5 py-3 text-left transition hover:bg-[#F7FAFB] sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-[#294354]">
-                      {dateRangeLabel(request.startDate, request.endDate)}
-                    </p>
-                    <p className="mt-0.5 text-[11px] font-medium text-[#8294A0]">
-                      {leaveTypeLabel(request.leaveType)} ·{" "}
-                      {leaveDayPortionLabel(request.dayPortion ?? "full")} ·{" "}
-                      {daysLabel(request.totalDays, request.dayPortion ?? "full")}
-                    </p>
-                    {request.status === "rejected" && request.rejectionReason ? (
-                      <p className="mt-1 text-[11px] font-medium text-[#A64D43]">
-                        Reason: {request.rejectionReason}
+          <div className="mt-3 overflow-hidden rounded-xl border border-[#EEF3F5]">
+            <ul className="divide-y divide-[#EEF3F5]">
+              {requests.map((request) => (
+                <li key={request.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelected(request)}
+                    className="flex w-full flex-col gap-2 px-3.5 py-3 text-left transition hover:bg-[#F7FAFB] sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-[#294354]">
+                        {dateRangeLabel(request.startDate, request.endDate)}
                       </p>
-                    ) : null}
-                    {request.status === "approved" && request.reviewedByName ? (
-                      <p className="mt-1 text-[11px] font-medium text-[#087A6D]">
-                        Approved by {request.reviewedByName}
-                        {request.reviewedByRole
-                          ? ` · ${roleLabel(request.reviewedByRole)}`
-                          : ""}
+                      <p className="mt-0.5 text-[11px] font-medium text-[#8294A0]">
+                        {leaveTypeLabel(request.leaveType)} ·{" "}
+                        {leaveDayPortionLabel(request.dayPortion ?? "full")} ·{" "}
+                        {daysLabel(
+                          request.totalDays,
+                          request.dayPortion ?? "full",
+                        )}
                       </p>
-                    ) : null}
-                  </div>
-                  <LeaveStatusBadge status={request.status} />
-                </button>
-              </li>
-            ))}
-          </ul>
+                      {request.status === "rejected" &&
+                      request.rejectionReason ? (
+                        <p className="mt-1 text-[11px] font-medium text-[#A64D43]">
+                          Reason: {request.rejectionReason}
+                        </p>
+                      ) : null}
+                      {request.status === "approved" &&
+                      request.reviewedByName ? (
+                        <p className="mt-1 text-[11px] font-medium text-[#087A6D]">
+                          Approved by {request.reviewedByName}
+                          {request.reviewedByRole
+                            ? ` · ${roleLabel(request.reviewedByRole)}`
+                            : ""}
+                        </p>
+                      ) : null}
+                    </div>
+                    <LeaveStatusBadge status={request.status} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <TablePagination
+              {...listPage.paginationProps(leaveQuery.data?.page.total ?? 0)}
+            />
+          </div>
         )}
       </div>
 
@@ -1195,12 +1209,15 @@ function MyLeavePanel({
 function ReviewerLeavePanel({ businessDate }: { businessDate: string }) {
   const [filter, setFilter] = useState<LeaveStatus | "all">("pending");
   const [employeeFilter, setEmployeeFilter] = useState("all");
-  const leaveQuery = useLeaveRequestsForReview(filter);
+  const listPage = useListPagination(`${filter}:${employeeFilter}`);
+  const leaveQuery = useLeaveRequestsForReviewPage(filter, listPage.pageQuery, {
+    employeeId: employeeFilter === "all" ? null : employeeFilter,
+  });
   const summaryQuery = useLeaveStatusSummary(true);
   const teamAttendance = useTeamAttendance(businessDate, true);
   const [selected, setSelected] = useState<LeaveRequest | null>(null);
   const [showApply, setShowApply] = useState(false);
-  const requests = leaveQuery.data ?? [];
+  const requests = leaveQuery.data?.items ?? [];
   const summary = summaryQuery.data ?? {
     pending: 0,
     approved: 0,
@@ -1213,24 +1230,11 @@ function ReviewerLeavePanel({ businessDate }: { businessDate: string }) {
       value: row.user.id,
       label: row.user.displayName || row.user.email,
     }));
-    const fromRequests = requests.map((request) => ({
-      value: request.userId,
-      label: request.employeeName || request.employeeEmail || request.userId,
-    }));
-    const byId = new Map<string, { value: string; label: string }>();
-    for (const option of [...fromTeam, ...fromRequests]) {
-      if (!byId.has(option.value)) byId.set(option.value, option);
-    }
     return [
       { value: "all", label: "All employees" },
-      ...[...byId.values()].sort((a, b) => a.label.localeCompare(b.label)),
+      ...fromTeam.sort((a, b) => a.label.localeCompare(b.label)),
     ];
-  }, [teamAttendance.data, requests]);
-
-  const filteredRequests = useMemo(() => {
-    if (employeeFilter === "all") return requests;
-    return requests.filter((request) => request.userId === employeeFilter);
-  }, [requests, employeeFilter]);
+  }, [teamAttendance.data]);
 
   if (leaveQuery.isLoading && !leaveQuery.data) return <AttendanceSkeleton />;
   if (leaveQuery.isError) {
@@ -1339,7 +1343,7 @@ function ReviewerLeavePanel({ businessDate }: { businessDate: string }) {
       </div>
 
       <div className="mt-4">
-        {filteredRequests.length === 0 ? (
+        {(leaveQuery.data?.total ?? 0) === 0 ? (
           <EmptyState
             icon={CalendarDays}
             title={
@@ -1364,7 +1368,7 @@ function ReviewerLeavePanel({ businessDate }: { businessDate: string }) {
                 </tr>
               </thead>
               <tbody>
-                {filteredRequests.map((request) => (
+                {requests.map((request) => (
                   <tr
                     key={request.id}
                     className="cursor-pointer"
@@ -1393,6 +1397,9 @@ function ReviewerLeavePanel({ businessDate }: { businessDate: string }) {
                 ))}
               </tbody>
             </table>
+            <TablePagination
+              {...listPage.paginationProps(leaveQuery.data?.total ?? 0)}
+            />
           </div>
         )}
       </div>

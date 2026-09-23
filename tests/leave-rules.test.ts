@@ -9,6 +9,7 @@ import {
   countLeaveWorkingDays,
   isHalfDayPortion,
   leaveDayPortionLabel,
+  leaveCoverageSummary,
   planFullDayLeaveCancelForPunchDate,
   rangesOverlap,
   selectPreviousLeaveRequests,
@@ -242,6 +243,18 @@ describe("half-day sessions", () => {
     expect(leaveDayPortionLabel("second_half")).toBe("2nd Half");
     expect(leaveDayPortionLabel("half")).toBe("Half Day");
     expect(leaveDayPortionLabel("full")).toBe("Full Day");
+  });
+
+  it("builds compact leave coverage summaries for UI chips", () => {
+    expect(
+      leaveCoverageSummary({ dayPortion: "full", leaveType: "casual" }),
+    ).toBe("Full Day · Casual");
+    expect(
+      leaveCoverageSummary({ dayPortion: "first_half", leaveType: "sick" }),
+    ).toBe("1st Half · Sick");
+    expect(
+      leaveCoverageSummary({ dayPortion: "hours_2", leaveType: "other" }),
+    ).toBe("2 Hours · Other");
   });
 
   it("treats first/second half as half-day leave for validation", () => {

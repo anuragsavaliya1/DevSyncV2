@@ -1,18 +1,20 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, LoaderCircle, Trash2, X } from "lucide-react";
 import { BusyOverlay } from "@/components/shared/action-loader";
 import { EmptyState, ErrorState } from "@/components/shared/error-state";
+import { TablePagination } from "@/components/shared/table-pagination";
 import { ThemedSelect } from "@/components/shared/themed-select";
 import {
   useCreateHoliday,
   useDeleteHoliday,
-  useHolidays,
+  useHolidaysPage,
 } from "@/features/holidays/hooks/use-holidays";
 import { AttendanceSkeleton } from "@/features/workspace/components/loading-skeletons";
 import { formatDate } from "@/features/workspace/utils/format";
+import { useListPagination } from "@/hooks/use-list-pagination";
 import { holidayKindLabel, type HolidayKind } from "@/lib/holiday-rules";
 import type { CompanyHoliday } from "@/types/api.types";
 
@@ -22,7 +24,24 @@ const KIND_OPTIONS = [
 ];
 
 export function HolidaysModule({ businessDate }: { businessDate: string }) {
-  const holidaysQuery = useHolidays(true);
+  const upcomingPage = useListPagination(`upcoming:${businessDate}`);
+  const pastPage = useListPagination(`past:${businessDate}`);
+  const upcomingQuery = useHolidaysPage(
+    {
+      range: "upcoming",
+      asOf: businessDate,
+      page: upcomingPage.pageQuery,
+    },
+    true,
+  );
+  const pastQuery = useHolidaysPage(
+    {
+      range: "past",
+      asOf: businessDate,
+      page: pastPage.pageQuery,
+    },
+    true,
+  );
   const createHoliday = useCreateHoliday();
   const deleteHoliday = useDeleteHoliday();
   const [date, setDate] = useState(businessDate);
@@ -31,14 +50,6 @@ export function HolidaysModule({ businessDate }: { businessDate: string }) {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CompanyHoliday | null>(null);
-
-  const holidays = useMemo(() => {
-    const list = holidaysQuery.data ?? [];
-    return [...list].sort((a, b) => a.date.localeCompare(b.date));
-  }, [holidaysQuery.data]);
-
-  const upcoming = holidays.filter((holiday) => holiday.date >= businessDate);
-  const past = holidays.filter((holiday) => holiday.date < businessDate);
 
   async function onCreate(event: FormEvent) {
     event.preventDefault();
@@ -73,21 +84,29 @@ export function HolidaysModule({ businessDate }: { businessDate: string }) {
     }
   }
 
-  if (holidaysQuery.isLoading && !holidaysQuery.data) return <AttendanceSkeleton />;
-  if (holidaysQuery.isError) {
+  if (
+    (upcomingQuery.isLoading && !upcomingQuery.data) ||
+    (pastQuery.isLoading && !pastQuery.data)
+  ) {
+    return <AttendanceSkeleton />;
+  }
+  if (upcomingQuery.isError || pastQuery.isError) {
     return (
       <ErrorState
         message={
-          holidaysQuery.error instanceof Error
-            ? holidaysQuery.error.message
-            : "Could not load holidays."
+          upcomingQuery.error instanceof Error
+            ? upcomingQuery.error.message
+            : pastQuery.error instanceof Error
+              ? pastQuery.error.message
+              : "Could not load holidays."
         }
       />
     );
   }
 
   const listBusy =
-    (holidaysQuery.isFetching && Boolean(holidaysQuery.data)) ||
+    (upcomingQuery.isFetching && Boolean(upcomingQuery.data)) ||
+    (pastQuery.isFetching && Boolean(pastQuery.data)) ||
     createHoliday.isPending ||
     Boolean(busyId);
 
@@ -171,7 +190,11 @@ export function HolidaysModule({ businessDate }: { businessDate: string }) {
       <HolidayListCard
         title="Upcoming"
         subtitle="Future and today"
-        holidays={upcoming}
+        holidays={upcomingQuery.data?.items ?? []}
+        total={upcomingQuery.data?.total ?? 0}
+        paginationProps={upcomingPage.paginationProps(
+          upcomingQuery.data?.total ?? 0,
+        )}
         emptyTitle="No upcoming entries."
         emptyDetail="Add a holiday or week off above."
         busyId={busyId}
@@ -181,7 +204,9 @@ export function HolidaysModule({ businessDate }: { businessDate: string }) {
       <HolidayListCard
         title="Past"
         subtitle="Historical records"
-        holidays={[...past].reverse()}
+        holidays={pastQuery.data?.items ?? []}
+        total={pastQuery.data?.total ?? 0}
+        paginationProps={pastPage.paginationProps(pastQuery.data?.total ?? 0)}
         emptyTitle="No past entries."
         emptyDetail="Past holidays and week offs will appear here."
         busyId={busyId}
@@ -286,6 +311,8 @@ function HolidayListCard({
   title,
   subtitle,
   holidays,
+  total,
+  paginationProps,
   emptyTitle,
   emptyDetail,
   busyId,
@@ -294,6 +321,13 @@ function HolidayListCard({
   title: string;
   subtitle: string;
   holidays: CompanyHoliday[];
+  total: number;
+  paginationProps: {
+    start: number;
+    limit: number;
+    total: number;
+    onPageChange: (start: number) => void;
+  };
   emptyTitle: string;
   emptyDetail: string;
   busyId: string | null;
@@ -310,7 +344,7 @@ function HolidayListCard({
         </p>
       </div>
       <div className="p-4 sm:p-5">
-        {holidays.length === 0 ? (
+        {total === 0 ? (
           <EmptyState
             icon={CalendarDays}
             title={emptyTitle}
@@ -364,6 +398,7 @@ function HolidayListCard({
                 ))}
               </tbody>
             </table>
+            <TablePagination {...paginationProps} />
           </div>
         )}
       </div>

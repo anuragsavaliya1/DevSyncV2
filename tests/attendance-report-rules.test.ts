@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assertAttendanceReportMonthRange,
+  attendanceReportActionPillClass,
   buildAutoKey,
   buildEmployeeSummaries,
   countMonthWorkingDays,
@@ -46,6 +47,23 @@ const earlyPunchOut = "2026-09-05T09:00:00.000Z";
 const onTimeOut = "2026-09-02T13:00:00.000Z";
 /** 09:00 IST on-time in */
 const onTimeIn = "2026-09-02T03:30:00.000Z";
+
+describe("attendanceReportActionPillClass", () => {
+  it("returns distinct highlight classes per action", () => {
+    expect(attendanceReportActionPillClass("Arrived Late")).toContain(
+      "bg-[#FFF7ED]",
+    );
+    expect(attendanceReportActionPillClass("On Leave")).toContain(
+      "bg-[#EEF5FB]",
+    );
+    expect(attendanceReportActionPillClass("Missing Punch")).toContain(
+      "bg-[#FEF2F2]",
+    );
+    expect(attendanceReportActionPillClass("Absent")).toContain(
+      "bg-[#F3F4F6]",
+    );
+  });
+});
 
 describe("office end early classification", () => {
   it("uses 18:30 IST when punch-in is at/before 09:00", () => {

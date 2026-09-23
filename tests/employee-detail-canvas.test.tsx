@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EmployeeDetailCanvas } from "../components/workspace/employee-detail-canvas";
 
@@ -69,10 +69,13 @@ describe("EmployeeDetailCanvas", () => {
     await screen.findByText("QA task");
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
 
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Task could not be deleted."
     );
-    expect(screen.getByText("QA task")).toBeInTheDocument();
+    expect(screen.getAllByText("QA task").length).toBeGreaterThan(0);
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/tasks/task-id",
       expect.objectContaining({ method: "DELETE" })

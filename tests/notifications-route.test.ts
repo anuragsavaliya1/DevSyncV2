@@ -110,17 +110,53 @@ describe("notifications API", () => {
     expect(mocks.clearAllNotifications).toHaveBeenCalledWith(user.id);
   });
 
-  it("still supports mark read", async () => {
-    mocks.getCurrentUser.mockResolvedValue(user);
-    mocks.markNotificationsRead.mockResolvedValue(undefined);
-    const response = await PATCH(
-      new NextRequest("http://localhost/api/notifications", {
-        method: "PATCH",
-        body: JSON.stringify({ notificationId: "n1" }),
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-    expect(response.status).toBe(200);
-    expect(mocks.markNotificationsRead).toHaveBeenCalledWith(user.id, "n1");
+  it("scopes list/mark-read/delete/clear to each role's own user id", async () => {
+    const roles = [
+      { ...user, id: "507f1f77bcf86cd799439011", role: "developer" as const },
+      { ...user, id: "507f1f77bcf86cd799439012", role: "manager" as const },
+      { ...user, id: "507f1f77bcf86cd799439013", role: "admin" as const },
+    ];
+
+    for (const actor of roles) {
+      mocks.getCurrentUser.mockResolvedValue(actor);
+      mocks.canViewTeamData.mockReturnValue(actor.role !== "developer");
+      mocks.listNotifications.mockResolvedValue({
+        notifications: [],
+        unreadCount: 0,
+        hasMore: false,
+        nextCursor: null,
+      });
+      mocks.markNotificationsRead.mockResolvedValue(undefined);
+      mocks.deleteNotification.mockResolvedValue({ deleted: true, id: "n1" });
+      mocks.clearAllNotifications.mockResolvedValue({ deletedCount: 1 });
+
+      await GET(new NextRequest("http://localhost/api/notifications"));
+      expect(mocks.listNotifications).toHaveBeenLastCalledWith(actor.id, {
+        limit: expect.any(Number),
+        cursor: null,
+      });
+
+      await PATCH(
+        new NextRequest("http://localhost/api/notifications", {
+          method: "PATCH",
+          body: JSON.stringify({ notificationId: "n1" }),
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      expect(mocks.markNotificationsRead).toHaveBeenLastCalledWith(
+        actor.id,
+        "n1",
+      );
+
+      await DELETE(
+        new NextRequest("http://localhost/api/notifications?id=n1"),
+      );
+      expect(mocks.deleteNotification).toHaveBeenLastCalledWith(actor.id, "n1");
+
+      await DELETE(
+        new NextRequest("http://localhost/api/notifications?all=true"),
+      );
+      expect(mocks.clearAllNotifications).toHaveBeenLastCalledWith(actor.id);
+    }
   });
 });

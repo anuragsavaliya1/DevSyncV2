@@ -26,7 +26,7 @@ import type { WorkspaceTab } from "@/types/common.types";
  * Attendance / work updates / tasks: cache + mutation invalidation (no polling).
  * Notifications: selective polling (configurable; future WS/SSE can replace this).
  */
-export function useWorkspaceCore(businessDate: string) {
+export function useWorkspaceCore(businessDate: string, userId: string) {
   const results = useQueries({
     queries: [
       {
@@ -42,7 +42,7 @@ export function useWorkspaceCore(businessDate: string) {
         queryFn: async () => (await listTasks()).tasks,
       },
       {
-        queryKey: queryKeys.notifications.all,
+        queryKey: queryKeys.notifications.list(userId),
         queryFn: async () =>
           listNotifications({ limit: QUERY_CONFIG.notifications.pageSize }),
         refetchInterval: QUERY_CONFIG.notifications.refetchInterval,

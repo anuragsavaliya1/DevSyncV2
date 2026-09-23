@@ -10,6 +10,7 @@ import {
   getMonthlyAttendanceReport,
   updateAttendanceReportEntry,
 } from "@/lib/operations";
+import { listResponseWithOptionalPaging } from "@/lib/pagination";
 import { getCurrentUser } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -57,7 +58,31 @@ export async function GET(request: NextRequest) {
       toMonth: toParam && isValidMonthKey(toParam) ? toParam : undefined,
       employeeId: employeeId?.trim() || undefined,
     });
-    return NextResponse.json(report);
+    const actionFilter = params.get("action")?.trim() || null;
+    let entries = report.entries;
+    if (
+      actionFilter &&
+      actionFilter !== "all" &&
+      (ATTENDANCE_REPORT_ACTIONS as readonly string[]).includes(actionFilter)
+    ) {
+      entries = entries.filter((entry) => entry.action === actionFilter);
+    }
+    const hasPaging = params.has("start") || params.has("limit");
+    if (!hasPaging) {
+      return NextResponse.json({
+        ...report,
+        entries,
+      });
+    }
+    const entriesPage = listResponseWithOptionalPaging(
+      "entries",
+      entries,
+      params,
+    );
+    return NextResponse.json({
+      ...report,
+      ...entriesPage,
+    });
   } catch (error) {
     const { error: message, status } = apiError(
       error,

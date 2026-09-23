@@ -5,6 +5,7 @@ import {
   listTeamAttendanceRows,
   type TeamAttendanceActivityFilter,
 } from "@/lib/operations";
+import { listResponseWithOptionalPaging } from "@/lib/pagination";
 import { getCurrentUser } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -26,10 +27,24 @@ export async function GET(request: NextRequest) {
     const activity = activityFromQuery(
       request.nextUrl.searchParams.get("activity"),
     );
+    const rows = await listTeamAttendanceRows(workDate, activity);
+    const summary = {
+      present: rows.filter((row) => row.attendance?.punchInAt).length,
+      onLeave: rows.filter((row) => row.onLeave).length,
+      absent: rows.filter(
+        (row) => !row.attendance?.punchInAt && !row.onLeave,
+      ).length,
+      total: rows.length,
+    };
     return NextResponse.json({
       workDate,
       activity,
-      rows: await listTeamAttendanceRows(workDate, activity),
+      summary,
+      ...listResponseWithOptionalPaging(
+        "rows",
+        rows,
+        request.nextUrl.searchParams,
+      ),
     });
   } catch {
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });

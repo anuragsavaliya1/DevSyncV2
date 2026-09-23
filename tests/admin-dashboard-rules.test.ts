@@ -265,7 +265,7 @@ describe("admin dashboard attendance summary", () => {
     });
   });
 
-  it("does not count on-leave employees who also punched in as present", () => {
+  it("counts punched-in half-day / hourly leave as present, not on leave", () => {
     expect(
       summarizeAdminAttendance({
         activeUserIds: ["a"],
@@ -274,8 +274,8 @@ describe("admin dashboard attendance summary", () => {
       }),
     ).toEqual({
       totalEmployees: 1,
-      presentToday: 0,
-      onLeaveToday: 1,
+      presentToday: 1,
+      onLeaveToday: 0,
       notPunchedIn: 0,
     });
   });

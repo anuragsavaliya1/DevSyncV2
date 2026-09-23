@@ -154,7 +154,7 @@ export function DevSyncWorkspace({
   useRegisterBrowserPush(true);
 
   const canViewTeam = canViewTeamRole(user.role);
-  const core = useWorkspaceCore(businessDate);
+  const core = useWorkspaceCore(businessDate, user.id);
   const teamQuery = useTeamUpdates(
     workDate,
     canViewTeam && (activeTab === "team-updates" || Boolean(selectedEmployeeId)),
@@ -188,10 +188,8 @@ export function DevSyncWorkspace({
   const updates = core.updates;
   const tasks = core.tasks;
   const teamMembers = teamQuery.data ?? [];
-  const allUsers = usersQuery.data ?? [user];
   const isLoading = core.isLoading;
   const isTeamLoading = teamQuery.isLoading && teamQuery.data === undefined;
-  const isUsersLoading = usersQuery.isLoading && usersQuery.data === undefined;
   const isRefreshing =
     (activeTab === "my-updates" && core.isFetching) ||
     (activeTab === "team-updates" && teamQuery.isFetching) ||
@@ -591,11 +589,8 @@ export function DevSyncWorkspace({
     if (activeTab === "attendance-reports") {
       return <AttendanceReportsModule />;
     }
-    return isUsersLoading ? (
-      <RoleManagementSkeleton />
-    ) : (
+    return (
       <AccessControlPanel
-        users={allUsers}
         selfId={user.id}
         initialAdminEmail={initialAdminEmail}
         isBusy={isBusy}
@@ -824,6 +819,7 @@ export function DevSyncWorkspace({
           onClose={() => setIsDrawerOpen(false)}
           onMarkRead={markRead}
           viewerRole={user.role}
+          viewerUserId={user.id}
         />
       )}
       {holidayCalendarOpen ? (
